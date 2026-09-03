@@ -6,6 +6,7 @@ import { AssigneeSelector } from "../common/AssigneeSelector";
 import { AssigneeSidePanel } from "../common/AssigneeSidePanel";
 import { Task, TaskPriority, TaskStatus, Member, AcceptanceCriterion, TaskComment, TaskAttachment } from "../../types";
 import { useAuth } from "../../context/AuthContext";
+import { useQueryClient } from "@tanstack/react-query";
 import { showAlert, showConfirm, notifySuccess, notifyError, notifyWarning, notifyInfo } from "../../utils/swal";
 import {
   useTask,
@@ -68,6 +69,7 @@ export function TaskDetailModal({
   const deleteCommentMutation = useDeleteComment();
   const addAttachmentMutation = useAddAttachment();
   const deleteAttachmentMutation = useDeleteAttachment();
+  const queryClient = useQueryClient();
 
   // Local editing states
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -86,6 +88,7 @@ export function TaskDetailModal({
   const [newCriteriaText, setNewCriteriaText] = useState("");
   const [newCommentText, setNewCommentText] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgressText, setUploadProgressText] = useState("");
   const [isAssigneePickerOpen, setIsAssigneePickerOpen] = useState(false);
 
   useEffect(() => {
@@ -266,37 +269,45 @@ export function TaskDetailModal({
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
+    const fileList = Array.from(files);
     setIsUploading(true);
-    const file = files[0];
+    setUploadProgressText(`Mengunggah 0/${fileList.length} berkas...`);
+
     const formData = new FormData();
-    formData.append("file", file);
+    fileList.forEach((file) => {
+      formData.append("files", file);
+    });
+    formData.append("task_id", task.id);
+    if (user?.id) {
+      formData.append("uploaded_by_id", user.id);
+    }
 
     try {
-      const res = await fetch("/api/upload", {
+      const res = await fetch(`/api/attachments/project/${projectId}`, {
         method: "POST",
         body: formData,
       });
 
-      if (!res.ok) throw new Error("Upload failed");
       const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Gagal mengunggah file lampiran");
+      }
 
-      addAttachmentMutation.mutate(
-        {
-          taskId: task.id,
-          file_name: data.file_name,
-          file_url: data.file_url,
-          file_size: data.file_size,
-          file_type: data.file_type,
-        },
-        {
-          onSuccess: () => notifySuccess("Lampiran berhasil diunggah"),
-        }
+      // Invalidate queries so task attachments and project attachments tab both update instantly
+      queryClient.invalidateQueries({ queryKey: ["tasks", "detail", task.id] });
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["project-attachments", projectId] });
+
+      notifySuccess(
+        "Lampiran Berhasil Diunggah",
+        `${data.count || fileList.length} berkas berhasil ditambahkan ke task.`
       );
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      notifyError("Gagal Mengunggah", "Terjadi kesalahan saat mengunggah file lampiran.");
+      notifyError("Gagal Mengunggah", err.message || "Terjadi kesalahan saat mengunggah file.");
     } finally {
       setIsUploading(false);
+      setUploadProgressText("");
       e.target.value = "";
     }
   };
@@ -844,9 +855,10 @@ export function TaskDetailModal({
 
               <label className="cursor-pointer inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200/80">
                 <UploadCloud className="w-3.5 h-3.5" />
-                <span>{isUploading ? "Mengunggah..." : "Upload File"}</span>
+                <span>{isUploading ? (uploadProgressText || "Mengunggah...") : "+ Upload File (Bisa Banyak)"}</span>
                 <input
                   type="file"
+                  multiple
                   onChange={handleFileUpload}
                   disabled={isUploading}
                   className="hidden"

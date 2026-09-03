@@ -97,35 +97,48 @@ export function RichTextEditor({
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const file = files[0];
-    if (!file.type.startsWith("image/")) {
-      notifyWarning("Format Tidak Didukung", "File harus berupa gambar (PNG, JPG, JPEG, WEBP, GIF)");
+    const fileList = Array.from(files);
+    const imageFiles = fileList.filter((f) => f.type.startsWith("image/") || /\.(png|jpe?g|webp|gif|svg|bmp|ico)$/i.test(f.name));
+
+    if (imageFiles.length === 0) {
+      notifyWarning("Format Tidak Didukung", "File harus berupa gambar (PNG, JPG, JPEG, WEBP, GIF, SVG)");
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
 
     setIsUploading(true);
-    const formData = new FormData();
-    formData.append("file", file);
+    let insertedSnippets = "";
+    let successCount = 0;
 
-    try {
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
+    for (const file of imageFiles) {
+      const formData = new FormData();
+      formData.append("file", file);
 
-      if (!res.ok) throw new Error("Gagal mengunggah gambar");
-      const data = await res.json();
+      try {
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
 
-      const imageMarkdown = `\n![${data.file_name}](${data.file_url})\n`;
-      insertFormatting(imageMarkdown, "", "");
-      notifySuccess("Gambar berhasil disematkan!");
-    } catch (err) {
-      console.error(err);
-      notifyError("Gagal Mengunggah", "Terjadi kesalahan saat mengunggah gambar.");
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+        if (res.ok) {
+          const data = await res.json();
+          insertedSnippets += `\n![${data.file_name}](${data.file_url})\n`;
+          successCount++;
+        }
+      } catch (err) {
+        console.error(err);
+      }
     }
+
+    if (insertedSnippets) {
+      insertFormatting(insertedSnippets, "", "");
+      notifySuccess(`${successCount} gambar berhasil disematkan!`);
+    } else {
+      notifyError("Gagal Mengunggah", "Terjadi kesalahan saat mengunggah gambar.");
+    }
+
+    setIsUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   // Convert simple markdown to safe HTML for preview
@@ -336,6 +349,7 @@ export function RichTextEditor({
             <input
               type="file"
               ref={fileInputRef}
+              multiple
               onChange={handleImageFileChange}
               accept="image/*"
               className="hidden"

@@ -1,7 +1,11 @@
 import { Hono } from "hono";
 import { db } from "../db/database";
+import { join } from "path";
+import { existsSync, unlinkSync } from "fs";
+import { sanitizeFileName } from "../utils/fileSecurity";
 
 const router = new Hono();
+const uploadsDir = join(import.meta.dir, "../../uploads");
 
 // Helper to fetch assignees for a list of tasks
 async function attachAssigneesToTasks(tasks: any[]) {
@@ -498,6 +502,20 @@ router.post("/:id/attachments", async (c) => {
 // DELETE /api/tasks/:id/attachments/:attachmentId - Delete attachment
 router.delete("/:id/attachments/:attachmentId", async (c) => {
   const attachmentId = c.req.param("attachmentId");
+
+  const att = (await db.query("SELECT file_url FROM task_attachments WHERE id = :id").get({ id: attachmentId })) as any;
+  if (att && att.file_url) {
+    const filename = att.file_url.replace("/uploads/", "");
+    const safeClean = sanitizeFileName(filename);
+    const filePath = join(uploadsDir, safeClean);
+    try {
+      if (existsSync(filePath)) {
+        unlinkSync(filePath);
+      }
+    } catch {}
+    await db.query("DELETE FROM project_attachments WHERE file_url = :fileUrl").run({ fileUrl: att.file_url });
+  }
+
   await db.query("DELETE FROM task_attachments WHERE id = :id").run({ id: attachmentId });
   return c.json({ success: true });
 });
