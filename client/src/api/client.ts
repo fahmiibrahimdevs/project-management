@@ -616,16 +616,16 @@ export function useRenameAttachment() {
         body: JSON.stringify({ file_name: fileName }),
       }),
     onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["project-attachments"] });
       if (variables.projectId) {
         queryClient.invalidateQueries({ queryKey: ["project-attachments", variables.projectId] });
         queryClient.invalidateQueries({ queryKey: ["project-attachments", { projectId: variables.projectId }] });
-      } else {
-        queryClient.invalidateQueries({ queryKey: ["project-attachments"] });
       }
       if (variables.taskId) {
         queryClient.invalidateQueries({ queryKey: ["tasks", "detail", variables.taskId] });
       }
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
     },
   });
 }

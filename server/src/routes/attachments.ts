@@ -245,25 +245,50 @@ router.put("/:id", async (c) => {
 
   const cleanName = sanitizeFileName(file_name);
 
-  // Update in project_attachments
-  await db.query(`
-    UPDATE project_attachments
-    SET file_name = :file_name
-    WHERE id = :id
-  `).run({
-    id: id,
-    file_name: cleanName,
-  });
+  // Retrieve existing file_url from either table
+  const existing = (await db.query("SELECT file_url FROM project_attachments WHERE id = :id").get({ id: id })) as any
+    || (await db.query("SELECT file_url FROM task_attachments WHERE id = :id").get({ id: id })) as any;
 
-  // Update in task_attachments if matches
-  await db.query(`
-    UPDATE task_attachments
-    SET file_name = :file_name
-    WHERE id = :id
-  `).run({
-    id: id,
-    file_name: cleanName,
-  });
+  if (existing && existing.file_url) {
+    // Synchronize both tables
+    await db.query(`
+      UPDATE project_attachments
+      SET file_name = :file_name
+      WHERE id = :id OR file_url = :fileUrl
+    `).run({
+      id: id,
+      fileUrl: existing.file_url,
+      file_name: cleanName,
+    });
+
+    await db.query(`
+      UPDATE task_attachments
+      SET file_name = :file_name
+      WHERE id = :id OR file_url = :fileUrl
+    `).run({
+      id: id,
+      fileUrl: existing.file_url,
+      file_name: cleanName,
+    });
+  } else {
+    await db.query(`
+      UPDATE project_attachments
+      SET file_name = :file_name
+      WHERE id = :id
+    `).run({
+      id: id,
+      file_name: cleanName,
+    });
+
+    await db.query(`
+      UPDATE task_attachments
+      SET file_name = :file_name
+      WHERE id = :id
+    `).run({
+      id: id,
+      file_name: cleanName,
+    });
+  }
 
   return c.json({ success: true, file_name: cleanName });
 });
@@ -284,10 +309,14 @@ router.delete("/:id", async (c) => {
         unlinkSync(filePath);
       }
     } catch {}
-  }
 
-  await db.query("DELETE FROM project_attachments WHERE id = :id").run({ id: id });
-  await db.query("DELETE FROM task_attachments WHERE id = :id").run({ id: id });
+    // Delete from both tables by ID and file_url
+    await db.query("DELETE FROM project_attachments WHERE id = :id OR file_url = :fileUrl").run({ id: id, fileUrl: item.file_url });
+    await db.query("DELETE FROM task_attachments WHERE id = :id OR file_url = :fileUrl").run({ id: id, fileUrl: item.file_url });
+  } else {
+    await db.query("DELETE FROM project_attachments WHERE id = :id").run({ id: id });
+    await db.query("DELETE FROM task_attachments WHERE id = :id").run({ id: id });
+  }
 
   return c.json({ success: true });
 });

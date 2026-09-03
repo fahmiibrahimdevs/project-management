@@ -43,7 +43,10 @@ import {
   Tag,
   Flag,
   Download,
-  Eye
+  Eye,
+  Loader2,
+  CheckCircle2,
+  Sparkles
 } from "lucide-react";
 import { getDownloadUrl } from "../../utils/download";
 import { format } from "date-fns";
@@ -97,6 +100,7 @@ export function TaskDetailModal({
   const [newCommentText, setNewCommentText] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgressText, setUploadProgressText] = useState("");
+  const [isDragOver, setIsDragOver] = useState(false);
   const [isAssigneePickerOpen, setIsAssigneePickerOpen] = useState(false);
 
   useEffect(() => {
@@ -278,11 +282,9 @@ export function TaskDetailModal({
     );
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+  const uploadFilesList = async (fileList: File[]) => {
+    if (!fileList || fileList.length === 0) return;
 
-    const fileList = Array.from(files);
     setIsUploading(true);
     setUploadProgressText(`Mengunggah 0/${fileList.length} berkas...`);
 
@@ -309,7 +311,9 @@ export function TaskDetailModal({
       // Invalidate queries so task attachments and project attachments tab both update instantly
       queryClient.invalidateQueries({ queryKey: ["tasks", "detail", task.id] });
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["project-attachments"] });
       queryClient.invalidateQueries({ queryKey: ["project-attachments", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["project-attachments", { projectId }] });
 
       notifySuccess(
         "Lampiran Berhasil Diunggah",
@@ -321,7 +325,37 @@ export function TaskDetailModal({
     } finally {
       setIsUploading(false);
       setUploadProgressText("");
+    }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      uploadFilesList(Array.from(e.target.files));
       e.target.value = "";
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!canUploadAttachment || isUploading) return;
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    if (!canUploadAttachment || isUploading) return;
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      uploadFilesList(Array.from(e.dataTransfer.files));
     }
   };
 
@@ -934,17 +968,84 @@ export function TaskDetailModal({
               {canUploadAttachment && (
                 <label className="cursor-pointer inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200/80">
                   <UploadCloud className="w-3.5 h-3.5" />
-                  <span>{isUploading ? (uploadProgressText || "Mengunggah...") : "+ Upload File (Bisa Banyak)"}</span>
+                  <span>{isUploading ? (uploadProgressText || "Mengunggah...") : "+ Upload File"}</span>
                   <input
                     type="file"
                     multiple
-                    onChange={handleFileUpload}
+                    onChange={handleFileInputChange}
                     disabled={isUploading}
                     className="hidden"
                   />
                 </label>
               )}
             </div>
+
+            {/* 📥 Drag and Drop Upload Area & Supported Formats Indicator */}
+            {canUploadAttachment && (
+              <div
+                onDragOver={handleDragOver}
+                onDragEnter={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                className={`relative border-2 border-dashed rounded-xl p-3 sm:p-4 text-center transition-all cursor-pointer ${
+                  isDragOver
+                    ? "border-blue-500 bg-blue-50/90 shadow-sm scale-[1.01]"
+                    : "border-slate-300 hover:border-blue-400 bg-white hover:bg-slate-50/50"
+                }`}
+              >
+                <input
+                  type="file"
+                  multiple
+                  onChange={handleFileInputChange}
+                  disabled={isUploading}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  title="Tarik & letakkan berkas di sini atau klik untuk memilih file"
+                />
+
+                <div className="flex flex-col items-center justify-center gap-1.5 pointer-events-none">
+                  <div
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${
+                      isDragOver ? "bg-blue-600 text-white" : "bg-blue-50 text-blue-600"
+                    }`}
+                  >
+                    {isUploading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <UploadCloud className="w-4 h-4" />
+                    )}
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-bold text-slate-800">
+                      {isUploading
+                        ? (uploadProgressText || "Sedang mengunggah berkas...")
+                        : "Tarik & Lepaskan File ke Sini, atau Klik untuk Memilih"}
+                    </p>
+                    <p className="text-[10px] text-slate-500 mt-0.5">
+                      Bisa pilih & drop beberapa file sekaligus (Multi-upload)
+                    </p>
+                  </div>
+
+                  {/* Badges of Supported File Extensions */}
+                  <div className="flex flex-wrap items-center justify-center gap-1 pt-1 text-[10px] text-slate-500">
+                    <span className="font-semibold text-slate-600">Format Didukung:</span>
+                    <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 font-mono font-bold text-[9px] border border-blue-200/60">
+                      CAD (DWG, DXF, STEP, STL)
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 font-mono font-bold text-[9px] border border-purple-200/60">
+                      Adobe (PSD, AI, INDD)
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-mono font-bold text-[9px] border border-emerald-200/60">
+                      Dokumen (PDF, Word, Excel, PPT)
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 font-mono font-bold text-[9px] border border-amber-200/60">
+                      Gambar & ZIP (PNG, JPG, RAR, 7Z)
+                    </span>
+                    <span className="text-slate-400 font-medium">| Maks. 100MB</span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
               {(task.attachments || []).length === 0 ? (

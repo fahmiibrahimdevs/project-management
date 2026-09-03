@@ -503,7 +503,9 @@ router.post("/:id/attachments", async (c) => {
 router.delete("/:id/attachments/:attachmentId", async (c) => {
   const attachmentId = c.req.param("attachmentId");
 
-  const att = (await db.query("SELECT file_url FROM task_attachments WHERE id = :id").get({ id: attachmentId })) as any;
+  const att = (await db.query("SELECT file_url FROM task_attachments WHERE id = :id").get({ id: attachmentId })) as any
+    || (await db.query("SELECT file_url FROM project_attachments WHERE id = :id").get({ id: attachmentId })) as any;
+
   if (att && att.file_url) {
     const filename = att.file_url.replace("/uploads/", "");
     const safeClean = sanitizeFileName(filename);
@@ -513,10 +515,14 @@ router.delete("/:id/attachments/:attachmentId", async (c) => {
         unlinkSync(filePath);
       }
     } catch {}
-    await db.query("DELETE FROM project_attachments WHERE file_url = :fileUrl").run({ fileUrl: att.file_url });
+
+    await db.query("DELETE FROM project_attachments WHERE id = :id OR file_url = :fileUrl").run({ id: attachmentId, fileUrl: att.file_url });
+    await db.query("DELETE FROM task_attachments WHERE id = :id OR file_url = :fileUrl").run({ id: attachmentId, fileUrl: att.file_url });
+  } else {
+    await db.query("DELETE FROM task_attachments WHERE id = :id").run({ id: attachmentId });
+    await db.query("DELETE FROM project_attachments WHERE id = :id").run({ id: attachmentId });
   }
 
-  await db.query("DELETE FROM task_attachments WHERE id = :id").run({ id: attachmentId });
   return c.json({ success: true });
 });
 
@@ -532,19 +538,36 @@ router.put("/:id/attachments/:attachmentId", async (c) => {
 
   const cleanName = sanitizeFileName(file_name);
 
-  // Update in task_attachments
-  await db.query(`
-    UPDATE task_attachments
-    SET file_name = :file_name
-    WHERE id = :id
-  `).run({ id: attachmentId, file_name: cleanName });
+  // Retrieve existing file_url from either table
+  const existing = (await db.query("SELECT file_url FROM task_attachments WHERE id = :id").get({ id: attachmentId })) as any
+    || (await db.query("SELECT file_url FROM project_attachments WHERE id = :id").get({ id: attachmentId })) as any;
 
-  // Update in project_attachments if matches
-  await db.query(`
-    UPDATE project_attachments
-    SET file_name = :file_name
-    WHERE id = :id
-  `).run({ id: attachmentId, file_name: cleanName });
+  if (existing && existing.file_url) {
+    // Synchronize both tables
+    await db.query(`
+      UPDATE task_attachments
+      SET file_name = :file_name
+      WHERE id = :id OR file_url = :fileUrl
+    `).run({ id: attachmentId, fileUrl: existing.file_url, file_name: cleanName });
+
+    await db.query(`
+      UPDATE project_attachments
+      SET file_name = :file_name
+      WHERE id = :id OR file_url = :fileUrl
+    `).run({ id: attachmentId, fileUrl: existing.file_url, file_name: cleanName });
+  } else {
+    await db.query(`
+      UPDATE task_attachments
+      SET file_name = :file_name
+      WHERE id = :id
+    `).run({ id: attachmentId, file_name: cleanName });
+
+    await db.query(`
+      UPDATE project_attachments
+      SET file_name = :file_name
+      WHERE id = :id
+    `).run({ id: attachmentId, file_name: cleanName });
+  }
 
   return c.json({ success: true, file_name: cleanName });
 });
