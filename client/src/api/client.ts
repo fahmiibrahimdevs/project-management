@@ -600,13 +600,31 @@ export function useUploadProjectAttachment() {
 export function useRenameAttachment() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, projectId, fileName }: { id: string; projectId: string; fileName: string }) =>
+    mutationFn: ({
+      id,
+      projectId,
+      taskId,
+      fileName,
+    }: {
+      id: string;
+      projectId?: string;
+      taskId?: string;
+      fileName: string;
+    }) =>
       fetchJson<{ success: boolean; file_name: string }>(`/api/attachments/${id}`, {
         method: "PUT",
         body: JSON.stringify({ file_name: fileName }),
       }),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["project-attachments", { projectId: variables.projectId }] });
+      if (variables.projectId) {
+        queryClient.invalidateQueries({ queryKey: ["project-attachments", variables.projectId] });
+        queryClient.invalidateQueries({ queryKey: ["project-attachments", { projectId: variables.projectId }] });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ["project-attachments"] });
+      }
+      if (variables.taskId) {
+        queryClient.invalidateQueries({ queryKey: ["tasks", "detail", variables.taskId] });
+      }
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
     },
   });

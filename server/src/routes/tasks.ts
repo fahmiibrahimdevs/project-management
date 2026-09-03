@@ -520,4 +520,33 @@ router.delete("/:id/attachments/:attachmentId", async (c) => {
   return c.json({ success: true });
 });
 
+// PUT /api/tasks/:id/attachments/:attachmentId - Rename task attachment
+router.put("/:id/attachments/:attachmentId", async (c) => {
+  const attachmentId = c.req.param("attachmentId");
+  const body = await c.req.json();
+  const { file_name } = body;
+
+  if (!file_name || !file_name.trim()) {
+    return c.json({ error: "Nama file tidak boleh kosong" }, 400);
+  }
+
+  const cleanName = sanitizeFileName(file_name);
+
+  // Update in task_attachments
+  await db.query(`
+    UPDATE task_attachments
+    SET file_name = :file_name
+    WHERE id = :id
+  `).run({ id: attachmentId, file_name: cleanName });
+
+  // Update in project_attachments if matches
+  await db.query(`
+    UPDATE project_attachments
+    SET file_name = :file_name
+    WHERE id = :id
+  `).run({ id: attachmentId, file_name: cleanName });
+
+  return c.json({ success: true, file_name: cleanName });
+});
+
 export default router;

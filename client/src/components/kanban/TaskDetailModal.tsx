@@ -8,6 +8,7 @@ import { Task, TaskPriority, TaskStatus, Member, AcceptanceCriterion, TaskCommen
 import { useAuth } from "../../context/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { showAlert, showConfirm, notifySuccess, notifyError, notifyWarning, notifyInfo } from "../../utils/swal";
+import Swal from "sweetalert2";
 import {
   useTask,
   useUpdateTask,
@@ -20,6 +21,7 @@ import {
   useDeleteComment,
   useAddAttachment,
   useDeleteAttachment,
+  useRenameAttachment,
 } from "../../api/client";
 import {
   Calendar,
@@ -71,6 +73,7 @@ export function TaskDetailModal({
   const deleteCommentMutation = useDeleteComment();
   const addAttachmentMutation = useAddAttachment();
   const deleteAttachmentMutation = useDeleteAttachment();
+  const renameAttachmentMutation = useRenameAttachment();
   const queryClient = useQueryClient();
 
   // Local editing states
@@ -311,6 +314,47 @@ export function TaskDetailModal({
       setIsUploading(false);
       setUploadProgressText("");
       e.target.value = "";
+    }
+  };
+
+  const handleRenameAttachment = async (att: TaskAttachment) => {
+    const ext = att.file_name.includes(".") ? att.file_name.split(".").pop() || "" : "";
+    const baseName = ext ? att.file_name.slice(0, -(ext.length + 1)) : att.file_name;
+
+    const { value: newBaseName } = await Swal.fire({
+      title: "Ganti Nama Berkas",
+      input: "text",
+      inputValue: baseName,
+      inputLabel: `Ekstensi (.${ext}) akan otomatis dipertahankan:`,
+      showCancelButton: true,
+      confirmButtonText: "Simpan Nama",
+      cancelButtonText: "Batal",
+      inputValidator: (val) => {
+        if (!val || !val.trim()) return "Nama berkas tidak boleh kosong!";
+        return null;
+      },
+      customClass: {
+        popup: "rounded-2xl shadow-2xl border border-slate-200 font-sans p-6",
+        title: "text-base font-bold text-slate-900",
+        confirmButton: "px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-xs ml-2",
+        cancelButton: "px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-medium",
+      },
+      buttonsStyling: false,
+    });
+
+    if (newBaseName && newBaseName.trim() !== baseName) {
+      const finalFileName = ext ? `${newBaseName.trim()}.${ext}` : newBaseName.trim();
+      try {
+        await renameAttachmentMutation.mutateAsync({
+          id: att.id,
+          projectId,
+          taskId: task.id,
+          fileName: finalFileName,
+        });
+        notifySuccess("Nama Berkas Diperbarui", `Menjadi "${finalFileName}"`);
+      } catch (err: any) {
+        notifyError("Gagal Mengubah Nama", err.message || "Terjadi kesalahan.");
+      }
     }
   };
 
@@ -903,6 +947,15 @@ export function TaskDetailModal({
                       >
                         <Download className="w-3.5 h-3.5" />
                       </a>
+
+                      <button
+                        type="button"
+                        onClick={() => handleRenameAttachment(att)}
+                        className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                        title="Ganti Nama Berkas"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
 
                       <button
                         type="button"
