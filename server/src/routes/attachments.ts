@@ -31,7 +31,9 @@ router.get("/project/:id", async (c) => {
       'project' as source,
       m.name as uploaded_by_name,
       m.avatar_color as uploaded_by_avatar_color,
-      t.title as task_title
+      t.title as task_title,
+      t.status as task_status,
+      t.priority as task_priority
     FROM project_attachments pa
     LEFT JOIN members m ON m.id = pa.uploaded_by_id
     LEFT JOIN tasks t ON t.id = pa.task_id
@@ -54,7 +56,9 @@ router.get("/project/:id", async (c) => {
       'task' as source,
       'Anggota Tim' as uploaded_by_name,
       '#2563eb' as uploaded_by_avatar_color,
-      t.title as task_title
+      t.title as task_title,
+      t.status as task_status,
+      t.priority as task_priority
     FROM task_attachments ta
     JOIN tasks t ON t.id = ta.task_id
     WHERE t.project_id = :projectId

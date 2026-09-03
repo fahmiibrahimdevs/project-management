@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Task, ProjectAttachment, FileCategory } from "../../types";
+import { Task, ProjectAttachment, FileCategory, TaskStatus, TaskPriority, Member } from "../../types";
 import { 
   useProjectAttachments, 
   useRenameAttachment, 
@@ -9,9 +9,9 @@ import { useAuth } from "../../context/AuthContext";
 import { FilePreviewModal } from "./FilePreviewModal";
 import { FileUploadModal } from "./FileUploadModal";
 import { Pagination } from "../common/Pagination";
+import { StatusBadge, PriorityBadge } from "../common/Badge";
 import { showConfirm, notifySuccess, notifyError } from "../../utils/swal";
 import { useDebounce } from "../../hooks/useDebounce";
-import { getCategoryBadgeClass } from "../bom/BOMCategoryMasterPage";
 import Swal from "sweetalert2";
 import { 
   UploadCloud, 
@@ -39,7 +39,8 @@ import {
   ChevronRight,
   FoldHorizontal,
   UnfoldHorizontal,
-  FolderOpen
+  FolderOpen,
+  Filter
 } from "lucide-react";
 
 interface ProjectAttachmentsTabProps {
@@ -47,76 +48,17 @@ interface ProjectAttachmentsTabProps {
   tasks: Task[];
 }
 
-interface CategoryDefinition {
-  id: string;
-  name: string;
-  color: string;
-  description: string;
-  icon: React.ComponentType<{ className?: string }>;
-}
-
-const ATTACHMENT_CATEGORIES: Record<string, CategoryDefinition> = {
-  document: {
-    id: "document",
-    name: "DOKUMEN & SPESIFIKASI (PDF / OFFICE)",
-    color: "rose",
-    description: "PDF, Lembar Spesifikasi Teknis, Laporan, Dokumen Word",
-    icon: FileText,
-  },
-  cad: {
-    id: "cad",
-    name: "CAD & 3D ENGINEERING (DWG / STEP / STL)",
-    color: "amber",
-    description: "AutoCAD Drawing (DWG/DXF), 3D Assembly (STEP/STL/SolidWorks), Gerber PCB",
-    icon: FileCode,
-  },
-  design: {
-    id: "design",
-    name: "ADOBE & DESAIN GRAFIS (PSD / AI / FIGMA)",
-    color: "purple",
-    description: "Adobe Photoshop (PSD), Illustrator (AI), InDesign (INDD), Aset Vektor UI/UX",
-    icon: Sparkles,
-  },
-  image: {
-    id: "image",
-    name: "GAMBAR & FOTO DOKUMENTASI",
-    color: "blue",
-    description: "Foto fisik perangkat, visual diagram, screenshot pengujian",
-    icon: ImageIcon,
-  },
-  spreadsheet: {
-    id: "spreadsheet",
-    name: "DATA & SPREADSHEET (XLSX / CSV)",
-    color: "emerald",
-    description: "Tabel kalkulasi Excel, data log sensor, rekap kebutuhan",
-    icon: FileSpreadsheet,
-  },
-  archive: {
-    id: "archive",
-    name: "ARSIP & KOMPRESI (ZIP / 7Z / TAR)",
-    color: "indigo",
-    description: "Paket berkas proyek terkompresi, arsip kode sumber",
-    icon: FileArchive,
-  },
-  other: {
-    id: "other",
-    name: "BERKAS LAIN-LAIN",
-    color: "slate",
-    description: "Lampiran berkas format lainnya",
-    icon: File,
-  },
-};
-
 export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachmentsTabProps) {
   const { user, isSuperUser } = useAuth();
   const { data, isLoading, error } = useProjectAttachments(projectId);
 
   const [activeCategory, setActiveCategory] = useState<FileCategory>("all");
+  const [selectedTaskId, setSelectedTaskId] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebounce(searchQuery, 300);
   const [sortBy, setSortBy] = useState<"newest" | "name" | "size">("newest");
   const [viewMode, setViewMode] = useState<"table" | "grid">("table"); // Default to Tree Table Group View
-  const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
+  const [collapsedTasks, setCollapsedTasks] = useState<Record<string, boolean>>({});
 
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -152,6 +94,15 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
           return false;
         }
 
+        // Task filter
+        if (selectedTaskId !== "all") {
+          if (selectedTaskId === "project-root") {
+            if (item.task_id) return false;
+          } else {
+            if (item.task_id !== selectedTaskId) return false;
+          }
+        }
+
         // Search filter with Debounce
         if (debouncedSearch.trim()) {
           const q = debouncedSearch.toLowerCase();
@@ -176,75 +127,98 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
         // default: newest
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       });
-  }, [attachments, activeCategory, debouncedSearch, sortBy]);
+  }, [attachments, activeCategory, selectedTaskId, debouncedSearch, sortBy]);
 
-  // Group items by Category for Tree Table Structure (like BOM!)
-  const groupedCategories = useMemo(() => {
+  // Group items by TASK for Tree Table Structure (like BOM, but Parent Node is TASK!)
+  const groupedTasks = useMemo(() => {
     const groups: Record<
       string,
       {
-        category: CategoryDefinition;
+        groupId: string;
+        isProjectLevel: boolean;
+        taskTitle: string;
+        taskStatus?: TaskStatus;
+        taskPriority?: TaskPriority;
+        taskAssignees?: Member[];
         items: ProjectAttachment[];
         totalBytes: number;
       }
     > = {};
 
-    // Initialize all categories in exact hierarchy order
-    const orderedCategoryKeys = ["document", "cad", "design", "image", "spreadsheet", "archive", "other"];
-    orderedCategoryKeys.forEach((key) => {
-      groups[key] = {
-        category: ATTACHMENT_CATEGORIES[key] || {
-          id: key,
-          name: key.toUpperCase(),
-          color: "slate",
-          description: "Berkas lainnya",
-          icon: File,
-        },
+    // 1. Group for Direct Project Level Attachments (Root)
+    groups["project-root"] = {
+      groupId: "project-root",
+      isProjectLevel: true,
+      taskTitle: "Pusat Dokumen Proyek",
+      items: [],
+      totalBytes: 0,
+    };
+
+    // 2. Initialize groups for all tasks from props
+    tasks.forEach((t) => {
+      groups[t.id] = {
+        groupId: t.id,
+        isProjectLevel: false,
+        taskTitle: t.title,
+        taskStatus: t.status,
+        taskPriority: t.priority,
+        taskAssignees: t.assignees,
         items: [],
         totalBytes: 0,
       };
     });
 
-    // Distribute filtered attachments
+    // 3. Distribute filtered attachments into groups
     filteredAttachments.forEach((att) => {
-      const catKey = att.category && groups[att.category] ? att.category : "other";
-      groups[catKey].items.push(att);
-      groups[catKey].totalBytes += Number(att.file_size) || 0;
+      if (!att.task_id) {
+        groups["project-root"].items.push(att);
+        groups["project-root"].totalBytes += Number(att.file_size) || 0;
+      } else {
+        if (!groups[att.task_id]) {
+          groups[att.task_id] = {
+            groupId: att.task_id,
+            isProjectLevel: false,
+            taskTitle: att.task_title || "Task Proyek",
+            taskStatus: att.task_status || "backlog",
+            taskPriority: att.task_priority || "medium",
+            taskAssignees: [],
+            items: [],
+            totalBytes: 0,
+          };
+        }
+        groups[att.task_id].items.push(att);
+        groups[att.task_id].totalBytes += Number(att.file_size) || 0;
+      }
     });
 
-    // If specific activeCategory selected, return only that category
-    if (activeCategory !== "all") {
-      return Object.values(groups).filter((g) => g.category.id === activeCategory);
-    }
-
-    // Otherwise return categories that have items > 0
+    // 4. Return only groups that have items (> 0 items)
     return Object.values(groups).filter((g) => g.items.length > 0);
-  }, [filteredAttachments, activeCategory]);
+  }, [filteredAttachments, tasks]);
 
   // Auto-reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeCategory, debouncedSearch, sortBy]);
+  }, [activeCategory, selectedTaskId, debouncedSearch, sortBy]);
 
   const paginatedAttachments = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
     return filteredAttachments.slice(start, start + pageSize);
   }, [filteredAttachments, currentPage, pageSize]);
 
-  const toggleCategoryCollapse = (catId: string) => {
-    setCollapsedCategories((prev) => ({
+  const toggleTaskCollapse = (taskId: string) => {
+    setCollapsedTasks((prev) => ({
       ...prev,
-      [catId]: !prev[catId],
+      [taskId]: !prev[taskId],
     }));
   };
 
-  const expandAll = () => setCollapsedCategories({});
+  const expandAll = () => setCollapsedTasks({});
   const collapseAll = () => {
     const allCollapsed: Record<string, boolean> = {};
-    Object.keys(ATTACHMENT_CATEGORIES).forEach((k) => {
-      allCollapsed[k] = true;
+    groupedTasks.forEach((g) => {
+      allCollapsed[g.groupId] = true;
     });
-    setCollapsedCategories(allCollapsed);
+    setCollapsedTasks(allCollapsed);
   };
 
   const handleRename = async (att: ProjectAttachment) => {
@@ -345,9 +319,28 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
     return "bg-slate-100 text-slate-700 border-slate-200";
   };
 
+  const getCategoryLabel = (cat?: string) => {
+    switch (cat) {
+      case "cad":
+        return "📐 CAD / 3D";
+      case "design":
+        return "🎨 Adobe / Desain";
+      case "document":
+        return "📄 Dokumen & PDF";
+      case "image":
+        return "🖼️ Gambar";
+      case "spreadsheet":
+        return "📊 Spreadsheet";
+      case "archive":
+        return "📦 Arsip";
+      default:
+        return "📁 Berkas";
+    }
+  };
+
   return (
     <div className="space-y-5">
-      {/* 🌟 Top Metric Cards (7 Category Highlights) */}
+      {/* 🌟 Top Metric Cards (7 Highlights) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
         {/* Total Storage Used */}
         <div className="p-3 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex items-center gap-2.5">
@@ -429,7 +422,7 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
         </div>
       </div>
 
-      {/* 🛠️ Main Control Bar: Sub-tabs, Search, Sort & Action Controls */}
+      {/* 🛠️ Main Control Bar: Filter Pills, Task Dropdown, Search, Sort & Actions */}
       <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-card space-y-4">
         {/* Category Filter Pills & Upload Button */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-slate-100">
@@ -525,10 +518,10 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
           </button>
         </div>
 
-        {/* Toolbar: Search, Sort, Expand/Collapse & View Mode Toggle */}
+        {/* Toolbar: Search, Task Filter, Sort, Expand/Collapse & View Mode Toggle */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           {/* Search Box */}
-          <div className="relative flex-1 min-w-[220px] max-w-md">
+          <div className="relative flex-1 min-w-[200px] max-w-sm">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
@@ -540,6 +533,24 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
           </div>
 
           <div className="flex items-center gap-2.5 flex-wrap">
+            {/* Filter by Task Source */}
+            <div className="flex items-center gap-1.5 text-xs text-slate-600">
+              <Filter className="w-3.5 h-3.5 text-slate-400" />
+              <select
+                value={selectedTaskId}
+                onChange={(e) => setSelectedTaskId(e.target.value)}
+                className="px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none font-medium cursor-pointer max-w-[180px] truncate"
+              >
+                <option value="all">Semua Task & Dokumen</option>
+                <option value="project-root">📁 Pusat Dokumen Proyek</option>
+                {tasks.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    📋 Task: {t.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Tree Expand / Collapse All Controls (BOM Style) */}
             {viewMode === "table" && (
               <div className="flex items-center gap-1 bg-slate-50 p-0.5 rounded-xl border border-slate-200/90">
@@ -547,7 +558,7 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
                   type="button"
                   onClick={expandAll}
                   className="p-1.5 text-slate-600 hover:text-blue-600 hover:bg-white rounded-lg text-xs transition-colors"
-                  title="Buka Semua Kategori"
+                  title="Buka Semua Group Task"
                 >
                   <UnfoldHorizontal className="w-3.5 h-3.5" />
                 </button>
@@ -555,7 +566,7 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
                   type="button"
                   onClick={collapseAll}
                   className="p-1.5 text-slate-600 hover:text-blue-600 hover:bg-white rounded-lg text-xs transition-colors"
-                  title="Tutup Semua Kategori"
+                  title="Tutup Semua Group Task"
                 >
                   <FoldHorizontal className="w-3.5 h-3.5" />
                 </button>
@@ -586,7 +597,7 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
                     ? "bg-white text-blue-600 shadow-2xs font-semibold"
                     : "text-slate-500 hover:text-slate-800"
                 }`}
-                title="Tampilan Tree Table Group (Kategori)"
+                title="Tampilan Tree Table Group (Berdasarkan Task)"
               >
                 <ListIcon className="w-3.5 h-3.5" />
               </button>
@@ -607,7 +618,7 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
         </div>
       </div>
 
-      {/* 📁 Content View (Tree Table Group or Grid Cards) */}
+      {/* 📁 Content View (Tree Table Group by Task or Grid Cards) */}
       {isLoading ? (
         <div className="p-12 text-center bg-white rounded-2xl border border-slate-200 shadow-card">
           <div className="w-8 h-8 mx-auto border-3 border-blue-600/30 border-t-blue-600 rounded-full animate-spin mb-3" />
@@ -619,7 +630,7 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
             <UploadCloud className="w-7 h-7" />
           </div>
           <div>
-            <h4 className="text-sm font-bold text-slate-800">Belum Ada Berkas di Kategori Ini</h4>
+            <h4 className="text-sm font-bold text-slate-800">Belum Ada Berkas di Kategori / Task Ini</h4>
             <p className="text-xs text-slate-500 mt-1">
               {searchQuery ? "Tidak ada berkas yang sesuai dengan kata kunci pencarian Anda." : "Klik tombol Unggah Berkas untuk menambahkan dokumen atau gambar ke proyek."}
             </p>
@@ -634,35 +645,34 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
           </button>
         </div>
       ) : viewMode === "table" ? (
-        /* 🌳 1 SINGLE CARD: TREE TABLE GROUP BY CATEGORY (BOM Style) */
+        /* 🌳 1 SINGLE CARD: TREE TABLE GROUP BY TASK (BOM Style) */
         <div className="bg-white rounded-2xl border border-slate-200/90 shadow-card overflow-hidden">
           <div className="w-full overflow-x-auto">
             <table className="w-full text-left text-xs table-auto">
               <thead className="bg-slate-50/90 border-b border-slate-200 text-slate-500 font-semibold uppercase tracking-wider text-[11px]">
                 <tr>
-                  <th className="py-3 px-3 sm:px-4 w-[36%]">Kategori & Nama Berkas</th>
+                  <th className="py-3 px-3 sm:px-4 w-[36%]">Asal Task & Nama Berkas</th>
                   <th className="py-3 px-2 sm:px-3 text-center w-[8%]">Tipe</th>
+                  <th className="py-3 px-2 sm:px-3 text-center w-[12%]">Kategori</th>
                   <th className="py-3 px-2 sm:px-3 text-right w-[10%]">Ukuran</th>
-                  <th className="py-3 px-2 sm:px-3 w-[20%]">Kaitan Proyek / Task</th>
-                  <th className="py-3 px-2 sm:px-3 w-[14%]">Diunggah Oleh</th>
+                  <th className="py-3 px-2 sm:px-3 w-[16%]">Diunggah Oleh</th>
                   <th className="py-3 px-2 sm:px-3 text-center w-[12%]">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700">
-                {groupedCategories.map((group) => {
-                  const cat = group.category;
-                  const isCollapsed = collapsedCategories[cat.id];
+                {groupedTasks.map((group) => {
+                  const isCollapsed = collapsedTasks[group.groupId];
                   const groupItems = group.items;
 
                   return (
-                    <React.Fragment key={cat.id}>
-                      {/* Category Header Row (Parent Tree Node) */}
+                    <React.Fragment key={group.groupId}>
+                      {/* Task Group Header Row (Parent Tree Node) */}
                       <tr
-                        onClick={() => toggleCategoryCollapse(cat.id)}
+                        onClick={() => toggleTaskCollapse(group.groupId)}
                         className="bg-slate-100/80 hover:bg-slate-200/60 border-y border-slate-200/90 cursor-pointer select-none transition-colors"
                       >
                         <td colSpan={4} className="py-2.5 px-3 sm:px-4">
-                          <div className="flex items-center gap-2.5">
+                          <div className="flex items-center gap-2.5 flex-wrap">
                             <button
                               type="button"
                               className="text-slate-500 hover:text-slate-700 transition-transform"
@@ -674,23 +684,25 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
                               )}
                             </button>
 
-                            <span
-                              className={`px-2.5 py-0.5 rounded-lg text-xs font-extrabold border tracking-wider uppercase shrink-0 ${getCategoryBadgeClass(
-                                cat.color
-                              )}`}
-                            >
-                              {cat.name}
-                            </span>
+                            {group.isProjectLevel ? (
+                              <span className="px-2.5 py-0.5 rounded-lg text-xs font-extrabold bg-blue-50 text-blue-700 border border-blue-200 tracking-wider uppercase shrink-0 flex items-center gap-1.5 shadow-2xs">
+                                <FolderOpen className="w-3.5 h-3.5 text-blue-600" />
+                                <span>PUSAT DOKUMEN PROYEK</span>
+                              </span>
+                            ) : (
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="px-2.5 py-0.5 rounded-lg text-xs font-extrabold bg-slate-200/80 text-slate-800 border border-slate-300 tracking-wider uppercase shrink-0 flex items-center gap-1.5 shadow-2xs">
+                                  <Layers className="w-3.5 h-3.5 text-blue-600" />
+                                  <span>TASK: {group.taskTitle}</span>
+                                </span>
+                                {group.taskStatus && <StatusBadge status={group.taskStatus} />}
+                                {group.taskPriority && <PriorityBadge priority={group.taskPriority} />}
+                              </div>
+                            )}
 
                             <span className="text-[11px] font-bold text-slate-600 bg-white px-2 py-0.5 rounded-md border border-slate-200/90 shadow-2xs">
                               {groupItems.length} Berkas
                             </span>
-
-                            {cat.description && (
-                              <span className="text-[11px] text-slate-500 truncate hidden md:inline font-normal">
-                                · {cat.description}
-                              </span>
-                            )}
                           </div>
                         </td>
 
@@ -704,7 +716,7 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
                         </td>
                       </tr>
 
-                      {/* Child File Rows (Tree Branch Nodes) */}
+                      {/* Child File Rows under this Task (Tree Branch Nodes) */}
                       {!isCollapsed &&
                         groupItems.map((att) => {
                           const ext = att.file_name.split(".").pop()?.toLowerCase() || "";
@@ -753,24 +765,16 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
                                 </span>
                               </td>
 
-                              {/* 3. File Size */}
-                              <td className="py-3 px-2 sm:px-3 text-right font-mono font-bold text-slate-700 whitespace-nowrap">
-                                {formatFileSize(att.file_size)}
+                              {/* 3. Category Pill */}
+                              <td className="py-3 px-2 sm:px-3 text-center">
+                                <span className="inline-block text-[11px] font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 whitespace-nowrap">
+                                  {getCategoryLabel(att.category)}
+                                </span>
                               </td>
 
-                              {/* 4. Linked Task / Source */}
-                              <td className="py-3 px-2 sm:px-3">
-                                {att.task_title ? (
-                                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200 max-w-[220px] truncate">
-                                    <Layers className="w-3 h-3 shrink-0" />
-                                    <span className="truncate">Task: {att.task_title}</span>
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1 text-[11px] text-slate-600 font-medium bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
-                                    <FolderOpen className="w-3 h-3 text-slate-400" />
-                                    <span>Pusat Dokumen Proyek</span>
-                                  </span>
-                                )}
+                              {/* 4. File Size */}
+                              <td className="py-3 px-2 sm:px-3 text-right font-mono font-bold text-slate-700 whitespace-nowrap">
+                                {formatFileSize(att.file_size)}
                               </td>
 
                               {/* 5. Uploader */}
@@ -782,7 +786,7 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
                                   >
                                     {(att.uploaded_by_name || "A").charAt(0).toUpperCase()}
                                   </div>
-                                  <span className="truncate max-w-[110px]">{att.uploaded_by_name || "Anggota Tim"}</span>
+                                  <span className="truncate max-w-[120px]">{att.uploaded_by_name || "Anggota Tim"}</span>
                                 </div>
                               </td>
 

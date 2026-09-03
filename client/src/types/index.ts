@@ -246,6 +246,8 @@ export interface ProjectAttachment {
   uploaded_by_name?: string;
   uploaded_by_avatar_color?: string;
   task_title?: string;
+  task_status?: TaskStatus;
+  task_priority?: TaskPriority;
 }
 
 export interface ProjectAttachmentsResponse {
