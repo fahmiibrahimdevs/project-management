@@ -16,4 +16,21 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    target: "esnext",
+    minify: "esbuild",
+    cssMinify: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ["react", "react-dom"],
+          query: ["@tanstack/react-query"],
+          icons: ["lucide-react"],
+          dnd: ["@hello-pangea/dnd"],
+          utils: ["date-fns", "sweetalert2", "clsx", "tailwind-merge"],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 1000,
+  },
 });
