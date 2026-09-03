@@ -237,12 +237,30 @@ router.post("/", async (c) => {
       WHERE t.id = :id
     `).get({ id: id }) as any;
 
-    created.assignees = await db.query(`
-      SELECT m.id, m.name, m.email, m.role, m.job_title, m.avatar_color
-      FROM task_assignees ta
-      JOIN members m ON m.id = ta.member_id
-      WHERE ta.task_id = :id
-    `).all({ id: id });
+    // 🔔 Notify assignees about new task assignment
+    try {
+      if (Array.isArray(assignee_ids) && assignee_ids.length > 0) {
+        for (const mId of assignee_ids) {
+          if (mId && mId !== created_by_id) {
+            const notifId = "ntf-" + crypto.randomUUID().slice(0, 8);
+            await db.query(`
+              INSERT INTO notifications (id, user_id, actor_id, project_id, task_id, type, title, message, is_read)
+              VALUES (:id, :userId, :actorId, :projectId, :taskId, 'task_assigned', :title, :message, 0)
+            `).run({
+              id: notifId,
+              userId: mId,
+              actorId: created_by_id || "",
+              projectId: project_id,
+              taskId: id,
+              title: `Anda ditugaskan pada task "${title.trim()}"`,
+              message: description ? description.trim().slice(0, 200) : "Anda telah ditugaskan untuk mengerjakan task ini.",
+            });
+          }
+        }
+      }
+    } catch (notifErr) {
+      console.error("Failed to generate task assign notification:", notifErr);
+    }
 
     return c.json(created, 201);
   } catch (err: any) {
@@ -281,6 +299,10 @@ router.put("/:id", async (c) => {
 
     // Update multiple assignees if provided
     if (Array.isArray(assignee_ids)) {
+      const prevAssignees = (await db.query(`SELECT member_id FROM task_assignees WHERE task_id = :id`).all({ id })) as { member_id: string }[];
+      const prevIds = new Set(prevAssignees.map((a) => a.member_id));
+      const newlyAdded = assignee_ids.filter((mId) => mId && !prevIds.has(mId));
+
       await db.query("DELETE FROM task_assignees WHERE task_id = :id").run({ id: id });
       for (const mId of assignee_ids) {
         if (mId) {
@@ -290,6 +312,32 @@ router.put("/:id", async (c) => {
             ON DUPLICATE KEY UPDATE task_id=task_id
           `).run({ task_id: id, member_id: mId });
         }
+      }
+
+      // 🔔 Notify newly assigned members
+      try {
+        if (newlyAdded.length > 0) {
+          const taskInfo = (await db.query(`SELECT title, project_id FROM tasks WHERE id = :id`).get({ id })) as any;
+          if (taskInfo) {
+            for (const newMId of newlyAdded) {
+              const notifId = "ntf-" + crypto.randomUUID().slice(0, 8);
+              await db.query(`
+                INSERT INTO notifications (id, user_id, actor_id, project_id, task_id, type, title, message, is_read)
+                VALUES (:id, :userId, :actorId, :projectId, :taskId, 'task_assigned', :title, :message, 0)
+              `).run({
+                id: notifId,
+                userId: newMId,
+                actorId: "",
+                projectId: taskInfo.project_id,
+                taskId: id,
+                title: `Anda ditugaskan pada task "${taskInfo.title}"`,
+                message: "Anda telah ditambahkan sebagai pelaksana tugas.",
+              });
+            }
+          }
+        }
+      } catch (notifErr) {
+        console.error("Failed to notify newly assigned members:", notifErr);
       }
     }
 
@@ -447,7 +495,7 @@ router.post("/:id/comments", async (c) => {
     content: content.trim(),
   });
 
-  const created = await db.query(`
+  const created = (await db.query(`
     SELECT 
       tc.*,
       m.name as author_name,
@@ -457,7 +505,79 @@ router.post("/:id/comments", async (c) => {
     FROM task_comments tc
     JOIN members m ON m.id = tc.member_id
     WHERE tc.id = :id
-  `).get({ id: id });
+  `).get({ id: id })) as any;
+
+  // 🔔 Generate notifications for Task Assignees, Task Creator, and Project PMs / Owners
+  try {
+    const task = (await db.query(`
+      SELECT t.id, t.title, t.project_id, t.created_by_id, p.name as project_name, p.code as project_code
+      FROM tasks t
+      JOIN projects p ON p.id = t.project_id
+      WHERE t.id = :id
+    `).get({ id: taskId })) as any;
+
+    if (task) {
+      const recipientIds = new Set<string>();
+
+      // 1. Assignees of this task
+      const assignees = (await db.query(`
+        SELECT member_id FROM task_assignees WHERE task_id = :taskId
+      `).all({ taskId })) as { member_id: string }[];
+      assignees.forEach((a) => {
+        if (a.member_id) recipientIds.add(a.member_id);
+      });
+
+      // 2. Creator of this task
+      if (task.created_by_id) {
+        recipientIds.add(task.created_by_id);
+      }
+
+      // 3. Owners of the company
+      const owners = (await db.query(`
+        SELECT id FROM members WHERE role = 'owner'
+      `).all()) as { id: string }[];
+      owners.forEach((o) => {
+        if (o.id) recipientIds.add(o.id);
+      });
+
+      // 4. PMs of this project
+      const pms = (await db.query(`
+        SELECT pm.member_id as id 
+        FROM project_members pm
+        JOIN members m ON m.id = pm.member_id
+        WHERE pm.project_id = :projectId AND m.role = 'pm'
+      `).all({ projectId: task.project_id })) as { id: string }[];
+      pms.forEach((p) => {
+        if (p.id) recipientIds.add(p.id);
+      });
+
+      // Exclude the author of the comment
+      if (member_id) {
+        recipientIds.delete(member_id);
+      }
+
+      const notifTitle = `${created?.author_name || "Seseorang"} mengomentari task "${task.title}"`;
+      const notifMessage = content.trim().length > 250 ? content.trim().slice(0, 247) + "..." : content.trim();
+
+      for (const targetUserId of recipientIds) {
+        const notifId = "ntf-" + crypto.randomUUID().slice(0, 8);
+        await db.query(`
+          INSERT INTO notifications (id, user_id, actor_id, project_id, task_id, type, title, message, is_read)
+          VALUES (:id, :userId, :actorId, :projectId, :taskId, 'task_comment', :title, :message, 0)
+        `).run({
+          id: notifId,
+          userId: targetUserId,
+          actorId: member_id || "",
+          projectId: task.project_id,
+          taskId: task.id,
+          title: notifTitle,
+          message: notifMessage,
+        });
+      }
+    }
+  } catch (notifErr) {
+    console.error("Failed to generate comment notification:", notifErr);
+  }
 
   return c.json(created, 201);
 });

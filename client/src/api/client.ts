@@ -10,6 +10,8 @@ import {
   IssueLog,
   ProjectAttachmentsResponse,
   ProjectAttachment,
+  NotificationItem,
+  NotificationsResponse,
 } from "../types";
 
 const BASE_URL = "";
@@ -644,4 +646,55 @@ export function useDeleteProjectAttachment() {
     },
   });
 }
+
+// ================= NOTIFICATIONS =================
+export function useNotifications(userId?: string) {
+  return useQuery<NotificationsResponse>({
+    queryKey: ["notifications", { userId }],
+    queryFn: () => fetchJson<NotificationsResponse>(`/api/notifications?userId=${userId}`),
+    enabled: !!userId,
+    refetchInterval: 10000, // Real-time polling every 10 seconds
+  });
+}
+
+export function useMarkNotificationRead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      fetchJson<{ success: boolean; id: string; is_read: number }>(`/api/notifications/${id}/read`, {
+        method: "PUT",
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    },
+  });
+}
+
+export function useMarkAllNotificationsRead() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: string) =>
+      fetchJson<{ success: boolean; user_id: string }>(`/api/notifications/read-all`, {
+        method: "PUT",
+        body: JSON.stringify({ user_id: userId }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    },
+  });
+}
+
+export function useDeleteNotification() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      fetchJson<{ success: boolean; id: string }>(`/api/notifications/${id}`, {
+        method: "DELETE",
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    },
+  });
+}
+
 

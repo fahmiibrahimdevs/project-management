@@ -225,6 +225,15 @@ function MainAppContent() {
     setIsCategoryMasterView(false);
   };
 
+  const handleSelectTaskFromNotification = (projectId: string, taskId: string) => {
+    setSelectedProjectId(projectId);
+    setIsGlobalView(false);
+    setIsTeamView(false);
+    setIsCategoryMasterView(false);
+    setActiveTab("kanban");
+    setActiveTaskId(taskId);
+  };
+
   const handleOpenNewProject = () => {
     setProjectToEdit(null);
     setIsProjectModalOpen(true);
@@ -243,8 +252,8 @@ function MainAppContent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f4f6f9] flex flex-col font-sans selection:bg-blue-100 selection:text-blue-900">
-      {/* Top Main Navigation Bar */}
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col font-sans">
+      {/* Top Navigation Bar */}
       <Navbar
         projects={projects}
         selectedProject={activeProject || null}
@@ -273,6 +282,7 @@ function MainAppContent() {
           setIsGlobalView(false);
         }}
         onSelectProject={handleSelectProjectFromNavbar}
+        onSelectTask={handleSelectTaskFromNotification}
         onOpenCreateProject={handleOpenNewProject}
         onOpenCreateTask={() => handleOpenCreateTask("backlog")}
         onOpenCreateBOM={() => setIsCreateBOMOpen(true)}

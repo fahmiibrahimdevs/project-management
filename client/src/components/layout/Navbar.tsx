@@ -11,11 +11,12 @@ import {
   LogOut,
   Shield,
   ShieldCheck,
+  Crown,
+  Tags,
   Menu,
   X,
-  Crown,
-  Tags
 } from "lucide-react";
+import { NotificationDropdown } from "./NotificationDropdown";
 
 interface NavbarProps {
   projects: Project[];
@@ -33,6 +34,7 @@ interface NavbarProps {
   onSelectTeamView: () => void;
   onSelectCategoryMasterView: () => void;
   onSelectProject: (p: Project) => void;
+  onSelectTask?: (projectId: string, taskId: string) => void;
   onOpenCreateProject: () => void;
   onOpenCreateTask: () => void;
   onOpenCreateBOM: () => void;
@@ -57,6 +59,7 @@ export function Navbar({
   onSelectTeamView,
   onSelectCategoryMasterView,
   onSelectProject,
+  onSelectTask,
   onOpenCreateProject,
   onOpenCreateTask,
   onOpenCreateBOM,
@@ -252,6 +255,11 @@ export function Navbar({
 
           {/* Right Actions & User Profile */}
           <div className="flex items-center gap-2 sm:gap-2.5">
+            {/* 🔔 Notification Bell Dropdown */}
+            {currentUser && (
+              <NotificationDropdown onSelectTask={onSelectTask || (() => {})} />
+            )}
+
             {/* User Profile Dropdown */}
             {currentUser && (
               <div className="relative" ref={userDropdownRef}>

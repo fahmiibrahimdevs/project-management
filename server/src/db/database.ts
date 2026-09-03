@@ -75,6 +75,24 @@ export async function initDatabase() {
     throw err;
   }
 
+  // Ensure notifications table exists
+  await execute(`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id VARCHAR(50) PRIMARY KEY,
+      user_id VARCHAR(50) NOT NULL,
+      actor_id VARCHAR(50) NOT NULL,
+      project_id VARCHAR(50) NOT NULL,
+      task_id VARCHAR(50) NULL,
+      type VARCHAR(50) DEFAULT 'task_comment',
+      title VARCHAR(255) NOT NULL,
+      message TEXT NOT NULL,
+      is_read TINYINT(1) DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_user_read (user_id, is_read),
+      INDEX idx_created (created_at)
+    )
+  `);
+
   // Ensure default BOM categories seeded if empty
   const countRes = await queryOne<{ count: number }>("SELECT COUNT(*) as count FROM bom_categories");
   if (!countRes || countRes.count === 0) {

@@ -266,3 +266,27 @@ export interface ProjectAttachmentsResponse {
     };
   };
 }
+
+export interface NotificationItem {
+  id: string;
+  user_id: string;
+  actor_id: string;
+  project_id: string;
+  task_id?: string | null;
+  type: "task_comment" | "task_assigned" | "task_created" | string;
+  title: string;
+  message: string;
+  is_read: number;
+  created_at: string;
+  actor_name?: string;
+  actor_avatar_color?: string;
+  actor_role?: string;
+  project_name?: string;
+  project_code?: string;
+  task_title?: string;
+}
+
+export interface NotificationsResponse {
+  unread_count: number;
+  notifications: NotificationItem[];
+}
