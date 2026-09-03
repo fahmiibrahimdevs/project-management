@@ -26,15 +26,22 @@ import {
   ChevronRight,
   Layers,
   FoldHorizontal,
-  UnfoldHorizontal
+  UnfoldHorizontal,
 } from "lucide-react";
+import { Member } from "../../types";
 
 interface BOMViewProps {
   projectId: string;
+  members?: Member[];
+  isProjectMember?: boolean;
 }
 
-export function BOMView({ projectId }: BOMViewProps) {
-  const { canEditContent } = useAuth();
+export function BOMView({ projectId, members = [], isProjectMember }: BOMViewProps) {
+  const { user } = useAuth();
+  const isOwner = user?.role === "owner";
+  const isMember = isProjectMember !== undefined ? isProjectMember : (isOwner || members.some((m) => m.id === user?.id));
+  const canEditContent = isMember;
+
   const { data, isLoading } = useBOM(projectId);
   const { data: masterCategories = [] } = useBOMCategories(projectId);
   const deleteMutation = useDeleteBOMItem();

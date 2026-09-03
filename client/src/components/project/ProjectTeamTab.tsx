@@ -21,6 +21,7 @@ import { format } from "date-fns";
 
 interface ProjectTeamTabProps {
   project: Project;
+  canEditProject?: boolean;
   onEditProject: () => void;
   onOpenPersonnelModal: () => void;
   onProjectDeleted: () => void;
@@ -28,11 +29,16 @@ interface ProjectTeamTabProps {
 
 export function ProjectTeamTab({
   project,
+  canEditProject: canEditProjectProp,
   onEditProject,
   onOpenPersonnelModal,
   onProjectDeleted,
 }: ProjectTeamTabProps) {
-  const { canEditProject } = useAuth();
+  const { user } = useAuth();
+  const isOwner = user?.role === "owner";
+  const isProjectPM = isOwner || (user?.role === "pm" && (project.members || []).some((m) => m.id === user?.id));
+  const canEditProject = canEditProjectProp !== undefined ? canEditProjectProp : isProjectPM;
+
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const deleteMutation = useDeleteProject();
 

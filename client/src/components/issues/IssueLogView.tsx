@@ -31,6 +31,7 @@ interface IssueLogViewProps {
   projectId: string;
   members: Member[];
   tasks: Task[];
+  isProjectMember?: boolean;
   isCreateModalOpen?: boolean;
   onCloseCreateModal?: () => void;
 }
@@ -39,10 +40,14 @@ export function IssueLogView({
   projectId,
   members,
   tasks,
+  isProjectMember,
   isCreateModalOpen = false,
   onCloseCreateModal,
 }: IssueLogViewProps) {
   const { user, isSuperUser } = useAuth();
+  const isOwner = user?.role === "owner";
+  const isMember = isProjectMember !== undefined ? isProjectMember : (isOwner || members.some((m) => m.id === user?.id));
+
   const { data, isLoading } = useIssueLogs(projectId);
   const deleteMutation = useDeleteIssueLog();
 
@@ -306,18 +311,20 @@ export function IssueLogView({
           </select>
         </div>
 
-        <button
-          type="button"
-          onClick={() => {
-            setIssueToEdit(null);
-            setIsModalOpen(true);
-          }}
-          title="Catat kendala teknis atau masalah baru"
-          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs transition-colors shrink-0"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Catat Log Masalah Baru</span>
-        </button>
+        {isMember && (
+          <button
+            type="button"
+            onClick={() => {
+              setIssueToEdit(null);
+              setIsModalOpen(true);
+            }}
+            title="Catat kendala teknis atau masalah baru"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs transition-colors shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Catat Log Masalah Baru</span>
+          </button>
+        )}
       </div>
 
       {/* Main Content Area: Activity Timeline View */}
@@ -420,32 +427,34 @@ export function IssueLogView({
                           </div>
 
                           {/* Action Buttons: Edit and Delete only */}
-                          <div className="flex items-center gap-1.5 self-end sm:self-auto">
-                            {(isSuperUser || issue.reported_by_id === user?.id) && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setIssueToEdit(issue);
-                                  setIsModalOpen(true);
-                                }}
-                                className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                title="Edit log permasalahan ini"
-                              >
-                                <Edit2 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
+                          {isMember && (
+                            <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                              {(isSuperUser || issue.reported_by_id === user?.id) && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setIssueToEdit(issue);
+                                    setIsModalOpen(true);
+                                  }}
+                                  className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                  title="Edit log permasalahan ini"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
 
-                            {isSuperUser && (
-                              <button
-                                type="button"
-                                onClick={() => setIssueToDelete(issue)}
-                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                                title="Hapus log permasalahan ini"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </div>
+                              {isSuperUser && (
+                                <button
+                                  type="button"
+                                  onClick={() => setIssueToDelete(issue)}
+                                  className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                                  title="Hapus log permasalahan ini"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </div>
 
                         {/* Card Body */}

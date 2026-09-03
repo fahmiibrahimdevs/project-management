@@ -20,6 +20,7 @@ import { ProjectPersonnelModal } from "./components/project/ProjectPersonnelModa
 import { ProjectTeamTab } from "./components/project/ProjectTeamTab";
 import { ProjectAttachmentsTab } from "./components/attachments/ProjectAttachmentsTab";
 import { BOMCategoryMasterPage } from "./components/bom/BOMCategoryMasterPage";
+import { useProjectPermissions } from "./hooks/useProjectPermissions";
 import { FolderKanban, Plus } from "lucide-react";
 
 // Helper to initialize navigation from URL or LocalStorage
@@ -99,7 +100,6 @@ function MainAppContent() {
     isLoading: isAuthLoading,
     canManageUsers,
     canCreateProject,
-    canEditProject,
     canCrudTask,
     canEditContent,
     isSuperUser,
@@ -184,6 +184,16 @@ function MainAppContent() {
 
   // Unified available members list
   const allMembers = rawMembers.length > 0 ? rawMembers : (activeProject?.members || []);
+
+  const {
+    isOwner,
+    isProjectMember,
+    isProjectPM,
+    isReadOnly,
+    canCreateTask,
+    canEditProject,
+    canManagePersonnel,
+  } = useProjectPermissions(activeProject, rawMembers);
 
   if (isAuthLoading) {
     return (
@@ -338,6 +348,8 @@ function MainAppContent() {
             <ProjectHeader
               project={activeProject}
               activeTab={activeTab}
+              isProjectMember={isProjectMember}
+              canEditProject={canEditProject}
               onTabChange={setActiveTab}
               onEditProject={handleOpenEditProject}
               onBackToGlobal={() => {
@@ -352,8 +364,9 @@ function MainAppContent() {
                 projectId={activeProject.id}
                 tasks={tasks}
                 members={allMembers}
+                isProjectMember={isProjectMember}
                 onTaskClick={(task) => setActiveTaskId(task.id)}
-                onOpenCreateTask={handleOpenCreateTask}
+                onOpenCreateTask={canCreateTask ? handleOpenCreateTask : () => {}}
               />
             )}
 
@@ -361,13 +374,18 @@ function MainAppContent() {
               <TaskListView
                 tasks={tasks}
                 members={allMembers}
+                isProjectMember={isProjectMember}
                 onTaskClick={(task) => setActiveTaskId(task.id)}
-                onOpenCreateTask={() => handleOpenCreateTask("backlog")}
+                onOpenCreateTask={canCreateTask ? () => handleOpenCreateTask("backlog") : () => {}}
               />
             )}
 
             {activeTab === "bom" && (
-              <BOMView projectId={activeProject.id} />
+              <BOMView
+                projectId={activeProject.id}
+                members={allMembers}
+                isProjectMember={isProjectMember}
+              />
             )}
 
             {activeTab === "issues" && (
@@ -375,6 +393,7 @@ function MainAppContent() {
                 projectId={activeProject.id}
                 members={allMembers}
                 tasks={tasks}
+                isProjectMember={isProjectMember}
                 isCreateModalOpen={isCreateIssueOpen}
                 onCloseCreateModal={() => setIsCreateIssueOpen(false)}
               />
@@ -383,6 +402,7 @@ function MainAppContent() {
             {activeTab === "team" && (
               <ProjectTeamTab
                 project={activeProject}
+                canEditProject={canEditProject}
                 onEditProject={handleOpenEditProject}
                 onOpenPersonnelModal={() => setIsPersonnelModalOpen(true)}
                 onProjectDeleted={() => {
@@ -396,6 +416,8 @@ function MainAppContent() {
               <ProjectAttachmentsTab
                 projectId={activeProject.id}
                 tasks={tasks}
+                members={allMembers}
+                isProjectMember={isProjectMember}
               />
             )}
           </div>
@@ -424,6 +446,7 @@ function MainAppContent() {
           taskId={activeTaskId}
           projectId={activeProject.id}
           members={allMembers}
+          isProjectMember={isProjectMember}
           onClose={() => setActiveTaskId(null)}
         />
       )}

@@ -105,23 +105,6 @@ router.get("/:id", async (c) => {
       m.name ASC
   `).all({ id: id }) as any[];
 
-  if (members.length === 0) {
-    members = await db.query(`
-      SELECT id, name, email, role, job_title, avatar_color, 'Member' as project_role
-      FROM members 
-      WHERE is_active = 1
-      ORDER BY 
-        CASE role 
-          WHEN 'owner' THEN 1 
-          WHEN 'pm' THEN 2 
-          WHEN 'karyawan' THEN 3 
-          WHEN 'magang' THEN 4 
-          ELSE 5 
-        END,
-        name ASC
-    `).all() as any[];
-  }
-
   project.members = members;
 
   return c.json(project);

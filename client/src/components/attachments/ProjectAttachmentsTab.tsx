@@ -46,10 +46,21 @@ import {
 interface ProjectAttachmentsTabProps {
   projectId: string;
   tasks: Task[];
+  members?: Member[];
+  isProjectMember?: boolean;
 }
 
-export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachmentsTabProps) {
+export function ProjectAttachmentsTab({
+  projectId,
+  tasks = [],
+  members = [],
+  isProjectMember,
+}: ProjectAttachmentsTabProps) {
   const { user, isSuperUser } = useAuth();
+  const isOwner = user?.role === "owner";
+  const isMember = isProjectMember !== undefined ? isProjectMember : (isOwner || members.some((m) => m.id === user?.id));
+  const canUpload = isMember;
+
   const { data, isLoading, error } = useProjectAttachments(projectId);
 
   const [activeCategory, setActiveCategory] = useState<FileCategory>("all");
@@ -508,14 +519,16 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
           </div>
 
           {/* Upload Button */}
-          <button
-            type="button"
-            onClick={() => setIsUploadModalOpen(true)}
-            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs transition-colors shrink-0"
-          >
-            <Plus className="w-4 h-4" />
-            <span>+ Unggah Berkas (Max 100MB)</span>
-          </button>
+          {canUpload && (
+            <button
+              type="button"
+              onClick={() => setIsUploadModalOpen(true)}
+              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs transition-colors shrink-0"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ Unggah Berkas (Max 100MB)</span>
+            </button>
+          )}
         </div>
 
         {/* Toolbar: Search, Task Filter, Sort, Expand/Collapse & View Mode Toggle */}
@@ -805,22 +818,26 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
                                   >
                                     <Download className="w-3.5 h-3.5" />
                                   </a>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRename(att)}
-                                    className="p-1.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
-                                    title="Ganti Nama File"
-                                  >
-                                    <Edit2 className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDelete(att)}
-                                    className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                                    title="Hapus File"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
+                                  {canUpload && (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRename(att)}
+                                        className="p-1.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                                        title="Ganti Nama File"
+                                      >
+                                        <Edit2 className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDelete(att)}
+                                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                                        title="Hapus File"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </>
+                                  )}
                                 </div>
                               </td>
                             </tr>
@@ -934,22 +951,26 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
                     >
                       <Download className="w-3.5 h-3.5" />
                     </a>
-                    <button
-                      type="button"
-                      onClick={() => handleRename(att)}
-                      className="p-1.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
-                      title="Ganti Nama File"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(att)}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                      title="Hapus File"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    {canUpload && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleRename(att)}
+                          className="p-1.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                          title="Ganti Nama File"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(att)}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                          title="Hapus File"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

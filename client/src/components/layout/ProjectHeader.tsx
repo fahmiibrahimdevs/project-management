@@ -13,12 +13,16 @@ import {
   DollarSign, 
   Edit3,
   CheckCircle2,
-  ArrowLeft
+  ArrowLeft,
+  Eye,
+  ShieldCheck
 } from "lucide-react";
 
 interface ProjectHeaderProps {
   project: Project;
   activeTab: ActiveTab;
+  isProjectMember?: boolean;
+  canEditProject?: boolean;
   onTabChange: (tab: ActiveTab) => void;
   onEditProject: () => void;
   onBackToGlobal?: () => void;
@@ -27,6 +31,8 @@ interface ProjectHeaderProps {
 export function ProjectHeader({
   project,
   activeTab,
+  isProjectMember = true,
+  canEditProject = true,
   onTabChange,
   onEditProject,
   onBackToGlobal,
@@ -96,6 +102,13 @@ export function ProjectHeader({
               >
                 {project.status.replace("_", " ")}
               </span>
+
+              {!isProjectMember && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-semibold rounded-md bg-amber-50 text-amber-700 border border-amber-200/90 shadow-2xs">
+                  <Eye className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Akses Hanya Lihat (Bukan Anggota)</span>
+                </span>
+              )}
             </div>
 
             {project.description && (
@@ -115,14 +128,16 @@ export function ProjectHeader({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={onEditProject}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition-colors"
-            >
-              <Edit3 className="w-3.5 h-3.5 text-slate-500" />
-              <span>Edit Proyek</span>
-            </button>
+            {canEditProject && (
+              <button
+                type="button"
+                onClick={onEditProject}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition-colors"
+              >
+                <Edit3 className="w-3.5 h-3.5 text-slate-500" />
+                <span>Edit Proyek</span>
+              </button>
+            )}
           </div>
         </div>
 

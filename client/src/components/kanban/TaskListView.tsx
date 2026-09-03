@@ -23,6 +23,7 @@ import { format, isPast, isToday } from "date-fns";
 interface TaskListViewProps {
   tasks: Task[];
   members: Member[];
+  isProjectMember?: boolean;
   onTaskClick: (task: Task) => void;
   onOpenCreateTask: () => void;
 }
@@ -30,6 +31,7 @@ interface TaskListViewProps {
 export function TaskListView({
   tasks,
   members,
+  isProjectMember,
   onTaskClick,
   onOpenCreateTask,
 }: TaskListViewProps) {
@@ -44,13 +46,18 @@ export function TaskListView({
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
 
+  const isOwner = user?.role === "owner";
+  const isMember = isProjectMember !== undefined ? isProjectMember : (isOwner || members.some((m) => m.id === user?.id));
+  const canCreateTask = isMember && canCrudTask;
+
   // Personalization rule: Karyawan & Magang see tasks assigned to them OR created by them
+  // Owner, PM, and non-member readers see all tasks.
   const visibleTasks = useMemo(() => {
-    if (isSuperUser) {
+    if (isSuperUser || !isMember) {
       return tasks;
     }
     return tasks.filter((t) => (t.assignees && t.assignees.some((a) => a.id === user?.id)) || t.created_by_id === user?.id);
-  }, [tasks, isSuperUser, user]);
+  }, [tasks, isSuperUser, isMember, user]);
 
   const filteredTasks = useMemo(() => {
     const q = debouncedSearch.trim().toLowerCase();

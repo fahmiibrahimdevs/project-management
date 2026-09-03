@@ -12,6 +12,7 @@ interface KanbanBoardProps {
   projectId: string;
   tasks: Task[];
   members: Member[];
+  isProjectMember?: boolean;
   onTaskClick: (task: Task) => void;
   onOpenCreateTask: (status?: TaskStatus) => void;
 }
@@ -78,6 +79,7 @@ export function KanbanBoard({
   projectId,
   tasks,
   members,
+  isProjectMember,
   onTaskClick,
   onOpenCreateTask,
 }: KanbanBoardProps) {
@@ -91,19 +93,22 @@ export function KanbanBoard({
 
   const reorderMutation = useReorderTasks();
 
-  // Drag & drop is available for all users, but restricted to backlog, in_progress, and in_review for Karyawan/Magang
-  const canDrag = true;
-  const canCreateTask = canCrudTask;
+  const isOwner = user?.role === "owner";
+  const isMember = isProjectMember !== undefined ? isProjectMember : (isOwner || members.some((m) => m.id === user?.id));
+
+  // Drag & drop and task creation are only allowed for project members and owner
+  const canDrag = isMember;
+  const canCreateTask = isMember && canCrudTask;
 
   // Personalization rule: Karyawan & Magang see tasks assigned to them OR created by them
-  // Owner & PM can see all tasks.
+  // Owner, PM, and non-member readers can see all tasks.
   const visibleTasks = useMemo(() => {
-    if (isSuperUser) {
+    if (isSuperUser || !isMember) {
       return tasks;
     }
     // For Karyawan and Magang: tasks assigned to them OR created by them
     return tasks.filter((t) => (t.assignees && t.assignees.some((a) => a.id === user?.id)) || t.created_by_id === user?.id);
-  }, [tasks, isSuperUser, user]);
+  }, [tasks, isSuperUser, isMember, user]);
 
   // Filter visible tasks based on search, priority, assignee filter
   const filteredTasks = useMemo(() => {
@@ -277,8 +282,20 @@ export function KanbanBoard({
 
   return (
     <div className="space-y-4">
-      {/* Informative notice for Karyawan / Magang */}
-      {!isSuperUser && (
+      {/* Informative notice for Non-members (Read-Only) vs Karyawan/Magang */}
+      {!isMember ? (
+        <div className="p-3 bg-amber-50/90 border border-amber-200/80 rounded-2xl flex items-center justify-between text-xs text-amber-900 shadow-2xs">
+          <div className="flex items-center gap-2">
+            <Eye className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>
+              <strong>Mode Hanya Lihat:</strong> Anda bukan anggota terdaftar pada proyek ini, sehingga Anda hanya memiliki akses baca (read-only) untuk melihat alur kerja Kanban dan rincian tugas.
+            </span>
+          </div>
+          <span className="font-bold bg-white px-2 py-0.5 rounded-lg border border-amber-200 shrink-0 text-amber-800">
+            Read-Only
+          </span>
+        </div>
+      ) : !isSuperUser && (
         <div className="p-3 bg-blue-50/90 border border-blue-200/80 rounded-2xl flex items-center justify-between text-xs text-blue-900 shadow-2xs">
           <div className="flex items-center gap-2">
             <UserCheck className="w-4 h-4 text-blue-600 shrink-0" />

@@ -42,7 +42,8 @@ import {
   Lock,
   Tag,
   Flag,
-  Download
+  Download,
+  Eye
 } from "lucide-react";
 import { getDownloadUrl } from "../../utils/download";
 import { format } from "date-fns";
@@ -51,6 +52,7 @@ interface TaskDetailModalProps {
   taskId: string;
   projectId: string;
   members: Member[];
+  isProjectMember?: boolean;
   onClose: () => void;
 }
 
@@ -58,6 +60,7 @@ export function TaskDetailModal({
   taskId,
   projectId,
   members = [],
+  isProjectMember,
   onClose,
 }: TaskDetailModalProps) {
   const { user, canEditContent, isViewer } = useAuth();
@@ -119,16 +122,21 @@ export function TaskDetailModal({
 
   // Permission: Who can edit task properties, checklist, add/delete criteria?
   // Owner, PM, Creator of the task, or Assigned Member of this task!
-  const isAssigned = task.assignees && task.assignees.some((a: Member) => a.id === user?.id);
-  const isSuperUser = user?.role === "owner" || user?.role === "pm";
-  const isCreator = !!user?.id && task.created_by_id === user?.id;
+  const isOwner = user?.role === "owner";
+  const isMember = isProjectMember !== undefined ? isProjectMember : (isOwner || members.some((m: Member) => m.id === user?.id));
 
-  const canEditTaskProperties = isSuperUser || isCreator || isAssigned;
-  const canManageCriteria = isSuperUser || isCreator || isAssigned;
-  const canCheckCriteria = isSuperUser || isCreator || isAssigned;
-  const canChangeStatus = isSuperUser || isCreator || isAssigned;
-  const canDeleteTask = isSuperUser || isCreator;
+  const isAssigned = isMember && !!task.assignees && task.assignees.some((a: Member) => a.id === user?.id);
+  const isSuperUser = isOwner || (user?.role === "pm" && isMember);
+  const isCreator = isMember && !!user?.id && task.created_by_id === user?.id;
+
+  const canEditTaskProperties = isMember && (isSuperUser || isCreator || isAssigned);
+  const canManageCriteria = isMember && (isSuperUser || isCreator || isAssigned);
+  const canCheckCriteria = isMember && (isSuperUser || isCreator || isAssigned);
+  const canChangeStatus = isMember && (isSuperUser || isCreator || isAssigned);
+  const canDeleteTask = isMember && (isSuperUser || isCreator);
   const canEditTask = isSuperUser;
+  const canComment = isMember;
+  const canUploadAttachment = isMember;
 
   const handleSaveTitleDesc = () => {
     if (!title.trim()) return;
@@ -432,6 +440,13 @@ export function TaskDetailModal({
           </div>
 
           <div className="flex items-center gap-2">
+            {!isMember && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-semibold rounded-md bg-amber-50 text-amber-700 border border-amber-200/90 shadow-2xs">
+                <Eye className="w-3.5 h-3.5 text-amber-600" />
+                <span>Mode Hanya Lihat</span>
+              </span>
+            )}
+
             {canDeleteTask && (
               <button
                 type="button"
@@ -444,6 +459,17 @@ export function TaskDetailModal({
             )}
           </div>
         </div>
+
+        {!isMember && (
+          <div className="p-3 bg-amber-50/90 border border-amber-200/80 rounded-2xl flex items-center justify-between text-xs text-amber-900 shadow-2xs">
+            <div className="flex items-center gap-2">
+              <Eye className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>
+                <strong>Akses Hanya Lihat:</strong> Anda bukan anggota terdaftar pada proyek ini. Anda hanya dapat melihat rincian progres tugas dan mengunduh berkas lampiran.
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Task Title & Description */}
         <div className="space-y-3">
@@ -870,23 +896,29 @@ export function TaskDetailModal({
             </div>
 
             {/* Add Comment Input */}
-            <form onSubmit={handleAddComment} className="flex gap-2 pt-1">
-              <input
-                type="text"
-                value={newCommentText}
-                onChange={(e) => setNewCommentText(e.target.value)}
-                placeholder="Tulis pesan diskusi teknis..."
-                className="flex-1 text-xs bg-white border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              />
-              <button
-                type="submit"
-                disabled={!newCommentText.trim() || addCommentMutation.isPending}
-                className="px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-xl shadow-xs flex items-center gap-1 cursor-pointer"
-              >
-                <Send className="w-3.5 h-3.5" />
-                <span>Kirim</span>
-              </button>
-            </form>
+            {canComment ? (
+              <form onSubmit={handleAddComment} className="flex gap-2 pt-1">
+                <input
+                  type="text"
+                  value={newCommentText}
+                  onChange={(e) => setNewCommentText(e.target.value)}
+                  placeholder="Tulis pesan diskusi teknis..."
+                  className="flex-1 text-xs bg-white border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                />
+                <button
+                  type="submit"
+                  disabled={!newCommentText.trim() || addCommentMutation.isPending}
+                  className="px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-xl shadow-xs flex items-center gap-1 cursor-pointer"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Kirim</span>
+                </button>
+              </form>
+            ) : (
+              <p className="text-[11px] text-slate-400 italic text-center py-2 bg-white rounded-xl border border-slate-200/70">
+                Hanya anggota terdaftar dalam proyek yang dapat mengirim komentar.
+              </p>
+            )}
           </div>
 
           {/* Attachments */}
@@ -899,17 +931,19 @@ export function TaskDetailModal({
                 </h3>
               </div>
 
-              <label className="cursor-pointer inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200/80">
-                <UploadCloud className="w-3.5 h-3.5" />
-                <span>{isUploading ? (uploadProgressText || "Mengunggah...") : "+ Upload File (Bisa Banyak)"}</span>
-                <input
-                  type="file"
-                  multiple
-                  onChange={handleFileUpload}
-                  disabled={isUploading}
-                  className="hidden"
-                />
-              </label>
+              {canUploadAttachment && (
+                <label className="cursor-pointer inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200/80">
+                  <UploadCloud className="w-3.5 h-3.5" />
+                  <span>{isUploading ? (uploadProgressText || "Mengunggah...") : "+ Upload File (Bisa Banyak)"}</span>
+                  <input
+                    type="file"
+                    multiple
+                    onChange={handleFileUpload}
+                    disabled={isUploading}
+                    className="hidden"
+                  />
+                </label>
+              )}
             </div>
 
             <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
@@ -948,28 +982,32 @@ export function TaskDetailModal({
                         <Download className="w-3.5 h-3.5" />
                       </a>
 
-                      <button
-                        type="button"
-                        onClick={() => handleRenameAttachment(att)}
-                        className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
-                        title="Ganti Nama Berkas"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
+                      {canUploadAttachment && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => handleRenameAttachment(att)}
+                            className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                            title="Ganti Nama Berkas"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
 
-                      <button
-                        type="button"
-                        onClick={() =>
-                          deleteAttachmentMutation.mutate({
-                            taskId: task.id,
-                            attachmentId: att.id,
-                          })
-                        }
-                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                        title="Hapus File Lampiran"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              deleteAttachmentMutation.mutate({
+                                taskId: task.id,
+                                attachmentId: att.id,
+                              })
+                            }
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                            title="Hapus File Lampiran"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 ))
