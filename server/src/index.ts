@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { join } from "path";
-import { initDatabase } from "./db/database";
+import { initDatabase, db } from "./db/database";
 import projectsRoute from "./routes/projects";
 import membersRoute from "./routes/members";
 import tasksRoute from "./routes/tasks";
@@ -11,6 +11,7 @@ import issueLogsRoute from "./routes/issueLogs";
 import uploadsRoute from "./routes/uploads";
 import attachmentsRoute from "./routes/attachments";
 import authRoute from "./routes/auth";
+import { isSafeUploadPath, sanitizeFileName } from "./utils/fileSecurity";
 
 // Initialize SQLite database and seed initial data
 await initDatabase();
@@ -27,8 +28,6 @@ app.use(
     allowHeaders: ["Content-Type", "Authorization"],
   })
 );
-
-import { isSafeUploadPath } from "./utils/fileSecurity";
 
 // Serve uploaded files securely (Path Traversal Protection & Security Headers)
 const uploadsDir = join(import.meta.dir, "../uploads");
@@ -53,6 +52,28 @@ app.get("/uploads/*", async (c) => {
     // Sandboxing for SVG to prevent stored XSS attacks
     if (ext === "svg" || ext === "xml" || ext === "html") {
       headers["Content-Security-Policy"] = "default-src 'none'; sandbox";
+    }
+
+    // Custom human-readable filename support for downloads
+    const customName = c.req.query("name");
+    const download = c.req.query("download");
+
+    if (customName) {
+      const downloadName = sanitizeFileName(customName);
+      const encodedName = encodeURIComponent(downloadName);
+      headers["Content-Disposition"] = `attachment; filename="${downloadName}"; filename*=UTF-8''${encodedName}`;
+    } else if (download === "1") {
+      const urlPattern = `/uploads/${rawPath}`;
+      const record = (await db.query(`
+        SELECT file_name FROM project_attachments WHERE file_url = :url
+        UNION
+        SELECT file_name FROM task_attachments WHERE file_url = :url
+        LIMIT 1
+      `).get({ url: urlPattern })) as any;
+
+      const downloadName = record?.file_name ? sanitizeFileName(record.file_name) : rawPath;
+      const encodedName = encodeURIComponent(downloadName);
+      headers["Content-Disposition"] = `attachment; filename="${downloadName}"; filename*=UTF-8''${encodedName}`;
     }
 
     return new Response(file, { headers });

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Modal } from "../common/Modal";
 import { ProjectAttachment } from "../../types";
+import { getDownloadUrl } from "../../utils/download";
 import { 
   Download, 
   ExternalLink, 
@@ -130,10 +131,10 @@ export function FilePreviewModal({ attachment, onClose }: FilePreviewModalProps)
 
             {/* Download Button */}
             <a
-              href={attachment.file_url}
+              href={getDownloadUrl(attachment.file_url, attachment.file_name)}
               download={attachment.file_name}
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-xs transition-colors"
-              title="Unduh Berkas"
+              title={`Unduh ${attachment.file_name}`}
             >
               <Download className="w-3.5 h-3.5" />
               <span>Unduh</span>

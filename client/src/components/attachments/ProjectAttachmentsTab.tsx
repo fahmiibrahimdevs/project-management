@@ -11,6 +11,7 @@ import { FileUploadModal } from "./FileUploadModal";
 import { Pagination } from "../common/Pagination";
 import { showConfirm, notifySuccess, notifyError } from "../../utils/swal";
 import { useDebounce } from "../../hooks/useDebounce";
+import { getDownloadUrl } from "../../utils/download";
 import Swal from "sweetalert2";
 import { 
   UploadCloud, 
@@ -797,10 +798,10 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
                                     <Eye className="w-3.5 h-3.5" />
                                   </button>
                                   <a
-                                    href={att.file_url}
+                                    href={getDownloadUrl(att.file_url, att.file_name)}
                                     download={att.file_name}
                                     className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                                    title="Unduh File"
+                                    title={`Unduh ${att.file_name}`}
                                   >
                                     <Download className="w-3.5 h-3.5" />
                                   </a>
@@ -926,10 +927,10 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
                       <Eye className="w-3.5 h-3.5" />
                     </button>
                     <a
-                      href={att.file_url}
+                      href={getDownloadUrl(att.file_url, att.file_name)}
                       download={att.file_name}
                       className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                      title="Unduh File"
+                      title={`Unduh ${att.file_name}`}
                     >
                       <Download className="w-3.5 h-3.5" />
                     </a>

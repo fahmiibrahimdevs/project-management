@@ -39,8 +39,10 @@ import {
   Check,
   Lock,
   Tag,
-  Flag
+  Flag,
+  Download
 } from "lucide-react";
+import { getDownloadUrl } from "../../utils/download";
 import { format } from "date-fns";
 
 interface TaskDetailModalProps {
@@ -873,36 +875,49 @@ export function TaskDetailModal({
                 task.attachments?.map((att: TaskAttachment) => (
                   <div
                     key={att.id}
-                    className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-slate-200/80 shadow-2xs"
+                    className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-slate-200/80 shadow-2xs group"
                   >
                     <a
-                      href={att.file_url}
+                      href={getDownloadUrl(att.file_url, att.file_name)}
+                      download={att.file_name}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 min-w-0 flex-1 hover:text-blue-600"
+                      className="flex items-center gap-2 min-w-0 flex-1 hover:text-blue-600 transition-colors"
+                      title={`Klik untuk mengunduh ${att.file_name}`}
                     >
                       <File className="w-4 h-4 text-blue-500 shrink-0" />
                       <div className="truncate">
-                        <p className="text-xs font-medium text-slate-800 truncate">{att.file_name}</p>
+                        <p className="text-xs font-semibold text-slate-800 group-hover:text-blue-600 truncate">{att.file_name}</p>
                         <p className="text-[10px] text-slate-400">
                           {Math.round(att.file_size / 1024)} KB
                         </p>
                       </div>
                     </a>
 
-                    <button
-                      type="button"
-                      onClick={() =>
-                        deleteAttachmentMutation.mutate({
-                          taskId: task.id,
-                          attachmentId: att.id,
-                        })
-                      }
-                      className="p-1 text-slate-400 hover:text-rose-600 transition-colors ml-2"
-                      title="Hapus file lampiran"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-1 shrink-0 ml-2">
+                      <a
+                        href={getDownloadUrl(att.file_url, att.file_name)}
+                        download={att.file_name}
+                        className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                        title="Unduh Berkas"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                      </a>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          deleteAttachmentMutation.mutate({
+                            taskId: task.id,
+                            attachmentId: att.id,
+                          })
+                        }
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                        title="Hapus File Lampiran"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 ))
               )}
