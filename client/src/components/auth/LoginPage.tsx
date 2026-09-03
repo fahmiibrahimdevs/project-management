@@ -136,7 +136,7 @@ export function LoginPage() {
           {/* Security badge */}
           <div className="mt-6 pt-5 border-t border-slate-100 flex items-center justify-center gap-1.5 text-[11px] text-slate-400">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Koneksi aman terenkripsi &bullet; Akses internal resmi</span>
+            <span>Koneksi aman terenkripsi • Akses internal resmi</span>
           </div>
         </div>
 
