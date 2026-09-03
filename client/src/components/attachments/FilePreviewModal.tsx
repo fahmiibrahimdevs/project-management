@@ -16,7 +16,8 @@ import {
   Info,
   Calendar,
   User,
-  Layers
+  Layers,
+  Sparkles
 } from "lucide-react";
 
 interface FilePreviewModalProps {
@@ -165,26 +166,61 @@ export function FilePreviewModal({ attachment, onClose }: FilePreviewModalProps)
               />
             </div>
           ) : (
-            /* 3. Non-previewable File Card (e.g. DOCX, XLSX, ZIP, CAD) */
-            <div className="p-8 text-center max-w-md mx-auto space-y-4">
-              <div className="w-20 h-20 mx-auto rounded-3xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 shadow-md">
-                {attachment.category === "spreadsheet" ? (
+            /* 3. Non-previewable File Card (e.g. DWG, PSD, AI, DOCX, XLSX, ZIP, CAD) */
+            <div className="p-8 text-center max-w-lg mx-auto space-y-4">
+              <div className={`w-20 h-20 mx-auto rounded-3xl flex items-center justify-center shadow-md border ${
+                ["psd", "psb", "ai", "eps", "indd"].includes(ext) || attachment.category === "design"
+                  ? "bg-purple-50 text-purple-600 border-purple-200"
+                  : ["dwg", "dxf", "step", "stp", "stl", "sldprt", "sldasm"].includes(ext) || attachment.category === "cad"
+                  ? "bg-amber-50 text-amber-600 border-amber-200"
+                  : attachment.category === "spreadsheet"
+                  ? "bg-emerald-50 text-emerald-600 border-emerald-200"
+                  : attachment.category === "archive"
+                  ? "bg-indigo-50 text-indigo-600 border-indigo-200"
+                  : "bg-blue-50 text-blue-600 border-blue-200"
+              }`}>
+                {["psd", "psb", "ai", "eps", "indd"].includes(ext) || attachment.category === "design" ? (
+                  <Sparkles className="w-10 h-10" />
+                ) : ["dwg", "dxf", "step", "stp", "stl", "sldprt", "sldasm"].includes(ext) || attachment.category === "cad" ? (
+                  <FileCode className="w-10 h-10" />
+                ) : attachment.category === "spreadsheet" ? (
                   <FileSpreadsheet className="w-10 h-10" />
                 ) : attachment.category === "archive" ? (
                   <FileArchive className="w-10 h-10" />
-                ) : attachment.category === "cad" ? (
-                  <FileCode className="w-10 h-10" />
                 ) : (
                   <File className="w-10 h-10" />
                 )}
               </div>
 
               <div>
+                <span className="inline-block uppercase font-mono text-[10px] font-bold px-2.5 py-0.5 rounded-md bg-slate-200 text-slate-700 mb-2">
+                  {ext === "dwg" || ext === "dxf"
+                    ? "AutoCAD Drawing"
+                    : ext === "psd" || ext === "psb"
+                    ? "Adobe Photoshop"
+                    : ext === "ai" || ext === "eps"
+                    ? "Adobe Illustrator"
+                    : ext === "indd"
+                    ? "Adobe InDesign"
+                    : ext === "step" || ext === "stp" || ext === "stl" || ext === "sldprt"
+                    ? "3D CAD / SolidWorks Model"
+                    : `Berkas .${ext.toUpperCase()}`}
+                </span>
                 <h4 className="text-base font-bold text-slate-900 break-all">
                   {attachment.file_name}
                 </h4>
-                <p className="text-xs text-slate-500 mt-1">
-                  Format berkas <strong>.{ext.toUpperCase()}</strong> ({formatFileSize(attachment.file_size)}) tidak mendukung pratinjau langsung di dalam browser.
+                <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                  {ext === "dwg" || ext === "dxf"
+                    ? "Berkas gambar teknik CAD dapat dibuka dengan Autodesk AutoCAD, DraftSight, atau DWG TrueView."
+                    : ext === "psd" || ext === "psb"
+                    ? "Berkas grafis raster Adobe Photoshop dengan struktur layer. Buka di Adobe Photoshop atau Photopea."
+                    : ext === "ai" || ext === "eps"
+                    ? "Berkas desain grafis vektor Adobe Illustrator. Buka di Adobe Illustrator atau Inkscape."
+                    : ext === "indd"
+                    ? "Berkas tata letak publikasi Adobe InDesign. Buka di software Adobe InDesign."
+                    : ext === "step" || ext === "stp" || ext === "stl" || ext === "sldprt" || ext === "sldasm"
+                    ? "Berkas geometri 3D CAD/CAM. Buka di SolidWorks, Autodesk Fusion 360, atau Blender."
+                    : `Format berkas .${ext.toUpperCase()} (${formatFileSize(attachment.file_size)}) siap diunduh dan dibuka di komputer Anda.`}
                 </p>
               </div>
 

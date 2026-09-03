@@ -57,16 +57,19 @@ export function FileUploadModal({
 
   const MAX_SIZE_BYTES = 100 * 1024 * 1024; // 100MB per file
 
+  const FORBIDDEN_EXTS = new Set([
+    "exe", "dll", "so", "bin", "com", "bat", "cmd", "sh", "bash", "zsh", "msi", "msp", "vbs", "vbe",
+    "ws", "wsf", "wsc", "wsh", "ps1", "ps2", "scr", "cpl", "hta", "jar", "war",
+    "php", "phtml", "php3", "php4", "php5", "php7", "phar", "asp", "aspx", "cgi", "pl", "py", "rb", "jsp",
+    "js", "mjs", "cjs", "jsx", "ts", "tsx", "htaccess", "env", "config"
+  ]);
+
   const addFilesToQueue = (files: FileList | File[]) => {
     const newItems: UploadQueueItem[] = [];
     const oversizedFiles: string[] = [];
+    const forbiddenFiles: string[] = [];
 
     Array.from(files).forEach((file) => {
-      if (file.size > MAX_SIZE_BYTES) {
-        oversizedFiles.push(file.name);
-        return;
-      }
-
       const originalName = file.name;
       const lastDotIndex = originalName.lastIndexOf(".");
       let baseName = originalName;
@@ -74,7 +77,18 @@ export function FileUploadModal({
 
       if (lastDotIndex !== -1) {
         baseName = originalName.substring(0, lastDotIndex);
-        ext = originalName.substring(lastDotIndex + 1);
+        ext = originalName.substring(lastDotIndex + 1).toLowerCase();
+      }
+
+      // Security check: Reject forbidden executable/script extensions
+      if (ext && FORBIDDEN_EXTS.has(ext)) {
+        forbiddenFiles.push(file.name);
+        return;
+      }
+
+      if (file.size > MAX_SIZE_BYTES) {
+        oversizedFiles.push(file.name);
+        return;
       }
 
       newItems.push({
@@ -84,6 +98,13 @@ export function FileUploadModal({
         ext,
       });
     });
+
+    if (forbiddenFiles.length > 0) {
+      notifyError(
+        "File Ditolak demi Keamanan",
+        `${forbiddenFiles.length} berkas ditolak karena berekstensi script/eksekusi: ${forbiddenFiles.join(", ")}`
+      );
+    }
 
     if (oversizedFiles.length > 0) {
       notifyWarning(
@@ -249,7 +270,7 @@ export function FileUploadModal({
         if (!isUploading) onClose();
       }}
       title="Unggah Berkas ke Lampiran Proyek"
-      subtitle="Mendukung unggah banyak berkas dengan pemantau progres real-time (Max 100MB/file)"
+      subtitle="Mendukung unggah CAD (.dwg, .step), Desain Adobe (.psd, .ai), Dokumen PDF/Office, Gambar & ZIP (Max 100MB/file)"
       maxWidth="3xl"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -292,7 +313,7 @@ export function FileUploadModal({
                   : "+ Klik atau Seret File Tambahan ke Sini"}
               </p>
               <p className="text-[11px] text-slate-500">
-                Maksimal <strong className="text-blue-600">100 MB per file</strong> • Mendukung semua tipe file (PDF, Gambar, ZIP, CAD, dll)
+                Maksimal <strong className="text-blue-600">100 MB/file</strong> • Mendukung CAD (DWG, STEP, STL), Adobe (PSD, AI, INDD), Dokumen (PDF, DOCX), Spreadsheet, dan Arsip ZIP.
               </p>
             </div>
           </div>

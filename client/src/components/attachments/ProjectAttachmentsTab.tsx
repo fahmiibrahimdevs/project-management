@@ -65,7 +65,7 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
   const summary = data?.summary || {
     total_files: 0,
     total_bytes: 0,
-    by_category: { document: 0, image: 0, spreadsheet: 0, archive: 0, cad: 0, other: 0 },
+    by_category: { document: 0, image: 0, design: 0, cad: 0, spreadsheet: 0, archive: 0, other: 0 },
   };
 
   const formatFileSize = (bytes: number) => {
@@ -185,17 +185,20 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
     if (e === "pdf" || cat === "document") {
       return <FileText className="w-5 h-5 text-rose-600" />;
     }
-    if (["png", "jpg", "jpeg", "webp", "gif", "svg"].includes(e) || cat === "image") {
+    if (["psd", "psb", "ai", "eps", "indd", "xd", "fig", "cdr"].includes(e) || cat === "design") {
+      return <Sparkles className="w-5 h-5 text-purple-600" />;
+    }
+    if (["dwg", "dxf", "step", "stp", "iges", "igs", "stl", "obj", "blend", "sldprt", "sldasm"].includes(e) || cat === "cad") {
+      return <FileCode className="w-5 h-5 text-amber-600" />;
+    }
+    if (["png", "jpg", "jpeg", "webp", "gif", "svg", "bmp"].includes(e) || cat === "image") {
       return <ImageIcon className="w-5 h-5 text-blue-600" />;
     }
-    if (["xlsx", "xls", "csv"].includes(e) || cat === "spreadsheet") {
+    if (["xlsx", "xls", "csv", "tsv"].includes(e) || cat === "spreadsheet") {
       return <FileSpreadsheet className="w-5 h-5 text-emerald-600" />;
     }
     if (["zip", "rar", "7z", "tar", "gz"].includes(e) || cat === "archive") {
-      return <FileArchive className="w-5 h-5 text-purple-600" />;
-    }
-    if (["dwg", "dxf", "step", "stp", "stl"].includes(e) || cat === "cad") {
-      return <FileCode className="w-5 h-5 text-amber-600" />;
+      return <FileArchive className="w-5 h-5 text-indigo-600" />;
     }
     return <File className="w-5 h-5 text-slate-600" />;
   };
@@ -203,83 +206,99 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
   const getFileBadgeBg = (cat?: string, ext?: string) => {
     const e = (ext || "").toLowerCase();
     if (e === "pdf") return "bg-rose-50 text-rose-700 border-rose-200";
+    if (["psd", "psb", "ai", "eps", "indd", "fig"].includes(e) || cat === "design") {
+      return "bg-purple-50 text-purple-700 border-purple-200";
+    }
+    if (["dwg", "dxf", "step", "stp", "stl", "sldprt"].includes(e) || cat === "cad") {
+      return "bg-amber-50 text-amber-700 border-amber-200";
+    }
     if (cat === "document") return "bg-indigo-50 text-indigo-700 border-indigo-200";
     if (cat === "image") return "bg-blue-50 text-blue-700 border-blue-200";
     if (cat === "spreadsheet") return "bg-emerald-50 text-emerald-700 border-emerald-200";
-    if (cat === "archive") return "bg-purple-50 text-purple-700 border-purple-200";
-    if (cat === "cad") return "bg-amber-50 text-amber-700 border-amber-200";
+    if (cat === "archive") return "bg-slate-100 text-slate-700 border-slate-200";
     return "bg-slate-100 text-slate-700 border-slate-200";
   };
 
   return (
     <div className="space-y-5">
       {/* 🌟 Top Metric Cards & Upload Action */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
         {/* Total Storage Used */}
-        <div className="p-3.5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100">
-            <HardDrive className="w-5 h-5" />
+        <div className="p-3 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100">
+            <HardDrive className="w-4 h-4" />
           </div>
           <div className="min-w-0">
             <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Kapasitas</p>
-            <p className="text-sm font-extrabold text-slate-900 truncate">
+            <p className="text-xs font-extrabold text-slate-900 truncate">
               {formatFileSize(summary.total_bytes)}
             </p>
           </div>
         </div>
 
         {/* Total Files */}
-        <div className="p-3.5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0 border border-slate-200">
-            <File className="w-5 h-5" />
+        <div className="p-3 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0 border border-slate-200">
+            <File className="w-4 h-4" />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Total Berkas</p>
-            <p className="text-sm font-extrabold text-slate-900">{summary.total_files}</p>
+            <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Total File</p>
+            <p className="text-xs font-extrabold text-slate-900">{summary.total_files}</p>
           </div>
         </div>
 
         {/* Documents / PDF */}
-        <div className="p-3.5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0 border border-rose-100">
-            <FileText className="w-5 h-5" />
+        <div className="p-3 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0 border border-rose-100">
+            <FileText className="w-4 h-4" />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Dokumen / PDF</p>
-            <p className="text-sm font-extrabold text-slate-900">{summary.by_category.document}</p>
+            <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Dokumen/PDF</p>
+            <p className="text-xs font-extrabold text-slate-900">{summary.by_category.document || 0}</p>
+          </div>
+        </div>
+
+        {/* CAD & 3D Engineering */}
+        <div className="p-3 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 border border-amber-100">
+            <FileCode className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">CAD / 3D</p>
+            <p className="text-xs font-extrabold text-slate-900">{summary.by_category.cad || 0}</p>
+          </div>
+        </div>
+
+        {/* Adobe & Design */}
+        <div className="p-3 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 border border-purple-100">
+            <Sparkles className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Adobe/Desain</p>
+            <p className="text-xs font-extrabold text-slate-900">{summary.by_category.design || 0}</p>
           </div>
         </div>
 
         {/* Images */}
-        <div className="p-3.5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100">
-            <ImageIcon className="w-5 h-5" />
+        <div className="p-3 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100">
+            <ImageIcon className="w-4 h-4" />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Gambar / Foto</p>
-            <p className="text-sm font-extrabold text-slate-900">{summary.by_category.image}</p>
+            <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Gambar</p>
+            <p className="text-xs font-extrabold text-slate-900">{summary.by_category.image || 0}</p>
           </div>
         </div>
 
-        {/* Spreadsheets */}
-        <div className="p-3.5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100">
-            <FileSpreadsheet className="w-5 h-5" />
+        {/* Spreadsheets & Data */}
+        <div className="p-3 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100">
+            <FileSpreadsheet className="w-4 h-4" />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Data / Excel</p>
-            <p className="text-sm font-extrabold text-slate-900">{summary.by_category.spreadsheet}</p>
-          </div>
-        </div>
-
-        {/* CAD & Archives */}
-        <div className="p-3.5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 border border-amber-100">
-            <FileCode className="w-5 h-5" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Arsip & CAD</p>
-            <p className="text-sm font-extrabold text-slate-900">{summary.by_category.cad + summary.by_category.archive}</p>
+            <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Spreadsheet</p>
+            <p className="text-xs font-extrabold text-slate-900">{summary.by_category.spreadsheet || 0}</p>
           </div>
         </div>
       </div>
@@ -310,29 +329,7 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
                   : "bg-slate-50 text-slate-600 hover:bg-slate-100"
               }`}
             >
-              📄 Dokumen & PDF ({summary.by_category.document})
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveCategory("image")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                activeCategory === "image"
-                  ? "bg-blue-600 text-white shadow-xs"
-                  : "bg-slate-50 text-slate-600 hover:bg-slate-100"
-              }`}
-            >
-              🖼️ Gambar / Foto ({summary.by_category.image})
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveCategory("spreadsheet")}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                activeCategory === "spreadsheet"
-                  ? "bg-emerald-600 text-white shadow-xs"
-                  : "bg-slate-50 text-slate-600 hover:bg-slate-100"
-              }`}
-            >
-              📊 Spreadsheet & Data ({summary.by_category.spreadsheet})
+              📄 Dokumen & PDF ({summary.by_category.document || 0})
             </button>
             <button
               type="button"
@@ -343,18 +340,51 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
                   : "bg-slate-50 text-slate-600 hover:bg-slate-100"
               }`}
             >
-              📐 CAD / 3D ({summary.by_category.cad})
+              📐 CAD / DWG / 3D ({summary.by_category.cad || 0})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveCategory("design")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                activeCategory === "design"
+                  ? "bg-purple-600 text-white shadow-xs"
+                  : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+              }`}
+            >
+              🎨 Adobe / Desain ({summary.by_category.design || 0})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveCategory("image")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                activeCategory === "image"
+                  ? "bg-blue-600 text-white shadow-xs"
+                  : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+              }`}
+            >
+              🖼️ Gambar / Foto ({summary.by_category.image || 0})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveCategory("spreadsheet")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                activeCategory === "spreadsheet"
+                  ? "bg-emerald-600 text-white shadow-xs"
+                  : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+              }`}
+            >
+              📊 Spreadsheet ({summary.by_category.spreadsheet || 0})
             </button>
             <button
               type="button"
               onClick={() => setActiveCategory("archive")}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
                 activeCategory === "archive"
-                  ? "bg-purple-600 text-white shadow-xs"
+                  ? "bg-slate-800 text-white shadow-xs"
                   : "bg-slate-50 text-slate-600 hover:bg-slate-100"
               }`}
             >
-              📦 Arsip ZIP ({summary.by_category.archive})
+              📦 Arsip ZIP ({summary.by_category.archive || 0})
             </button>
           </div>
 

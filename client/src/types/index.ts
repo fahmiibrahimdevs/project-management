@@ -6,7 +6,7 @@ export type BOMPriority = 'low' | 'medium' | 'high';
 export type IssueStatus = 'open' | 'investigating' | 'resolved' | 'closed';
 export type IssueSeverity = 'low' | 'medium' | 'high' | 'critical';
 export type ActiveTab = 'kanban' | 'list' | 'bom' | 'issues' | 'team' | 'attachments';
-export type FileCategory = 'all' | 'document' | 'image' | 'spreadsheet' | 'archive' | 'cad' | 'other';
+export type FileCategory = 'all' | 'document' | 'image' | 'design' | 'cad' | 'spreadsheet' | 'archive' | 'other';
 
 export interface User {
   id: string;
@@ -256,9 +256,10 @@ export interface ProjectAttachmentsResponse {
     by_category: {
       document: number;
       image: number;
+      design: number;
+      cad: number;
       spreadsheet: number;
       archive: number;
-      cad: number;
       other: number;
     };
   };
