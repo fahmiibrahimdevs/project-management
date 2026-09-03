@@ -96,6 +96,8 @@ export function StatusBadge({ status }: { status: TaskStatus }) {
   switch (status) {
     case "completed":
       return <Badge variant="success" title="Status: Tugas Selesai Dikerjakan">Selesai</Badge>;
+    case "revision":
+      return <Badge variant="danger" title="Status: Perlu Revisi / Perbaikan Hasil Peninjauan">Perlu Revisi</Badge>;
     case "in_review":
       return <Badge variant="purple" title="Status: Dalam Peninjauan / Verifikasi Hasil">Ditinjau</Badge>;
     case "in_progress":

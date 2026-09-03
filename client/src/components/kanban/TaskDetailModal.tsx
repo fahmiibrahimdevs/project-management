@@ -468,6 +468,7 @@ export function TaskDetailModal({
                   <option value="backlog">Daftar Tunggu</option>
                   <option value="in_progress">Sedang Dikerjakan</option>
                   <option value="in_review">Dalam Peninjauan</option>
+                  <option value="revision">Perlu Revisi</option>
                   <option value="completed" disabled={!isSuperUser}>
                     Selesai {!isSuperUser ? "(Khusus PM/Owner)" : ""}
                   </option>

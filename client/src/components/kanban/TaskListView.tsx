@@ -94,7 +94,7 @@ export function TaskListView({
         return sortOrder === "asc" ? diff : -diff;
       }
       if (sortBy === "status") {
-        const sOrder: Record<string, number> = { in_progress: 1, in_review: 2, on_hold: 3, backlog: 4, completed: 5 };
+        const sOrder: Record<string, number> = { revision: 1, in_progress: 2, in_review: 3, on_hold: 4, backlog: 5, completed: 6 };
         const diff = (sOrder[a.status] || 99) - (sOrder[b.status] || 99);
         return sortOrder === "asc" ? diff : -diff;
       }
@@ -114,7 +114,7 @@ export function TaskListView({
       const pDiff = (priorityWeight[b.priority] || 0) - (priorityWeight[a.priority] || 0);
       if (pDiff !== 0) return pDiff;
 
-      const sOrder: Record<string, number> = { in_progress: 1, in_review: 2, on_hold: 3, backlog: 4, completed: 5 };
+      const sOrder: Record<string, number> = { revision: 1, in_progress: 2, in_review: 3, on_hold: 4, backlog: 5, completed: 6 };
       const sDiff = (sOrder[a.status] || 99) - (sOrder[b.status] || 99);
       if (sDiff !== 0) return sDiff;
 
@@ -172,8 +172,9 @@ export function TaskListView({
               <option value="backlog">Daftar Tunggu</option>
               <option value="in_progress">Sedang Dikerjakan</option>
               <option value="in_review">Dalam Peninjauan</option>
-              <option value="on_hold">Ditunda</option>
+              <option value="revision">Perlu Revisi</option>
               <option value="completed">Selesai</option>
+              <option value="on_hold">Ditunda</option>
             </select>
           </div>
 

@@ -49,6 +49,14 @@ const COLUMNS: Array<{
     tooltip: "Tugas selesai dikerjakan dan sedang ditinjau / diverifikasi oleh PM/Owner",
   },
   {
+    id: "revision",
+    title: "Perlu Revisi",
+    dotColor: "bg-rose-600",
+    badgeBg: "bg-rose-100",
+    badgeText: "text-rose-800",
+    tooltip: "Tugas yang memerlukan perbaikan berdasarkan catatan hasil peninjauan",
+  },
+  {
     id: "completed",
     title: "Selesai",
     dotColor: "bg-emerald-600",
@@ -126,8 +134,9 @@ export function KanbanBoard({
       backlog: [],
       in_progress: [],
       in_review: [],
-      on_hold: [],
+      revision: [],
       completed: [],
+      on_hold: [],
     };
 
     filteredTasks.forEach((task) => {

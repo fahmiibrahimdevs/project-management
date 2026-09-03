@@ -1,5 +1,5 @@
 export type UserRole = 'owner' | 'pm' | 'karyawan' | 'magang';
-export type TaskStatus = 'backlog' | 'in_progress' | 'in_review' | 'on_hold' | 'completed';
+export type TaskStatus = 'backlog' | 'in_progress' | 'in_review' | 'revision' | 'completed' | 'on_hold';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type BOMStatus = 'belum_checkout' | 'sudah_checkout' | 'ditolak' | 'dibatalkan';
 export type BOMPriority = 'low' | 'medium' | 'high';

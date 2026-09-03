@@ -167,8 +167,9 @@ export function TaskCreateModal({
               <option value="backlog">Daftar Tunggu</option>
               <option value="in_progress">Sedang Dikerjakan</option>
               <option value="in_review">Dalam Peninjauan</option>
-              <option value="on_hold">Ditunda</option>
+              <option value="revision">Perlu Revisi</option>
               <option value="completed">Selesai</option>
+              <option value="on_hold">Ditunda</option>
             </select>
           </div>
 
