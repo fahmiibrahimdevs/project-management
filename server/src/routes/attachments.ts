@@ -2,33 +2,13 @@ import { Hono } from "hono";
 import { db } from "../db/database";
 import { join } from "path";
 import { existsSync, mkdirSync, unlinkSync } from "fs";
+import { getFileCategory, validateUploadedFile, sanitizeFileName } from "../utils/fileSecurity";
 
 const router = new Hono();
 
 const uploadsDir = join(import.meta.dir, "../../uploads");
 if (!existsSync(uploadsDir)) {
   mkdirSync(uploadsDir, { recursive: true });
-}
-
-// Helper to determine file category
-function getFileCategory(ext: string, mime: string = ""): string {
-  const e = ext.toLowerCase().replace(".", "");
-  if (["pdf", "doc", "docx", "txt", "rtf", "odt"].includes(e) || mime.includes("pdf") || mime.includes("word") || mime.includes("text")) {
-    return "document";
-  }
-  if (["png", "jpg", "jpeg", "webp", "gif", "svg", "bmp", "ico"].includes(e) || mime.startsWith("image/")) {
-    return "image";
-  }
-  if (["xlsx", "xls", "csv", "tsv", "ods"].includes(e) || mime.includes("spreadsheet") || mime.includes("excel") || mime.includes("csv")) {
-    return "spreadsheet";
-  }
-  if (["zip", "rar", "7z", "tar", "gz"].includes(e) || mime.includes("zip") || mime.includes("compressed")) {
-    return "archive";
-  }
-  if (["dwg", "dxf", "step", "stp", "iges", "igs", "stl", "obj", "blend", "sldprt", "sldasm"].includes(e)) {
-    return "cad";
-  }
-  return "other";
 }
 
 // GET /api/attachments/project/:id - Get all attachments for project (both project level & task level)
@@ -114,10 +94,11 @@ router.get("/project/:id", async (c) => {
   const byCategory = {
     document: combined.filter((i) => i.category === "document").length,
     image: combined.filter((i) => i.category === "image").length,
+    design: combined.filter((i) => i.category === "design").length,
+    cad: combined.filter((i) => i.category === "cad").length,
     spreadsheet: combined.filter((i) => i.category === "spreadsheet").length,
     archive: combined.filter((i) => i.category === "archive").length,
-    cad: combined.filter((i) => i.category === "cad").length,
-    other: combined.filter((i) => !["document", "image", "spreadsheet", "archive", "cad"].includes(i.category)).length,
+    other: combined.filter((i) => !["document", "image", "design", "cad", "spreadsheet", "archive"].includes(i.category)).length,
   };
 
   return c.json({
@@ -163,32 +144,35 @@ router.post("/project/:id", async (c) => {
     const taskId = (Array.isArray(body["task_id"]) ? body["task_id"][0] : body["task_id"] as string | undefined) || null;
     const uploadedById = (Array.isArray(body["uploaded_by_id"]) ? body["uploaded_by_id"][0] : body["uploaded_by_id"] as string | undefined) || null;
 
-    const MAX_SIZE = 100 * 1024 * 1024; // 100MB per file
     const createdItems: any[] = [];
+
+    // Pre-validate all files first
+    for (let i = 0; i < fileList.length; i++) {
+      const file = fileList[i];
+      const validation = validateUploadedFile(file);
+      if (!validation.isValid) {
+        return c.json({ error: validation.error || `File "${file.name}" ditolak oleh kebijakan keamanan sistem` }, 400);
+      }
+    }
 
     for (let i = 0; i < fileList.length; i++) {
       const file = fileList[i];
+      const validation = validateUploadedFile(file);
+      const ext = validation.ext;
 
-      if (file.size > MAX_SIZE) {
-        return c.json({ error: `File "${file.name}" melebihi batas maksimal 100MB` }, 400);
-      }
-
-      const originalName = file.name;
-      const ext = originalName.includes(".") ? originalName.split(".").pop() || "" : "";
-      
-      let finalDisplayName = customNames[i] ? customNames[i].trim() : originalName;
+      let finalDisplayName = customNames[i] ? sanitizeFileName(customNames[i]) : validation.safeDisplayName;
       if (ext && !finalDisplayName.toLowerCase().endsWith("." + ext.toLowerCase())) {
         finalDisplayName = `${finalDisplayName}.${ext}`;
       }
 
-      const uniqueFileName = `${Date.now()}-${crypto.randomUUID().slice(0, 8)}${ext ? "." + ext : ""}`;
+      const uniqueFileName = `${Date.now()}-${crypto.randomUUID().slice(0, 12)}${ext ? "." + ext : ""}`;
       const filePath = join(uploadsDir, uniqueFileName);
 
       const arrayBuffer = await file.arrayBuffer();
       await Bun.write(filePath, arrayBuffer);
 
       const fileUrl = `/uploads/${uniqueFileName}`;
-      const category = getFileCategory(ext, file.type);
+      const category = validation.category;
       const id = "att-" + crypto.randomUUID().slice(0, 8);
 
       await db.query(`
@@ -255,6 +239,8 @@ router.put("/:id", async (c) => {
     return c.json({ error: "Nama file tidak boleh kosong" }, 400);
   }
 
+  const cleanName = sanitizeFileName(file_name);
+
   // Update in project_attachments
   await db.query(`
     UPDATE project_attachments
@@ -262,7 +248,7 @@ router.put("/:id", async (c) => {
     WHERE id = :id
   `).run({
     id: id,
-    file_name: file_name.trim(),
+    file_name: cleanName,
   });
 
   // Update in task_attachments if matches
@@ -272,13 +258,13 @@ router.put("/:id", async (c) => {
     WHERE id = :id
   `).run({
     id: id,
-    file_name: file_name.trim(),
+    file_name: cleanName,
   });
 
-  return c.json({ success: true, file_name: file_name.trim() });
+  return c.json({ success: true, file_name: cleanName });
 });
 
-// DELETE /api/attachments/:id - Delete attachment
+// DELETE /api/attachments/:id - Delete attachment securely
 router.delete("/:id", async (c) => {
   const id = c.req.param("id");
 
@@ -287,7 +273,8 @@ router.delete("/:id", async (c) => {
 
   if (item && item.file_url) {
     const filename = item.file_url.replace("/uploads/", "");
-    const filePath = join(uploadsDir, filename);
+    const safeClean = sanitizeFileName(filename);
+    const filePath = join(uploadsDir, safeClean);
     try {
       if (existsSync(filePath)) {
         unlinkSync(filePath);

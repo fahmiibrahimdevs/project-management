@@ -28,14 +28,36 @@ app.use(
   })
 );
 
-// Serve uploaded files
+import { isSafeUploadPath } from "./utils/fileSecurity";
+
+// Serve uploaded files securely (Path Traversal Protection & Security Headers)
+const uploadsDir = join(import.meta.dir, "../uploads");
+
 app.get("/uploads/*", async (c) => {
-  const filePath = c.req.path.replace(/^\/uploads\//, "");
-  const fullPath = join(import.meta.dir, "../uploads", filePath);
-  const file = Bun.file(fullPath);
-  if (await file.exists()) {
-    return new Response(file);
+  const rawPath = c.req.path.replace(/^\/uploads\//, "");
+  
+  if (!isSafeUploadPath(rawPath, uploadsDir)) {
+    return c.text("Forbidden: Invalid Path Traversal", 403);
   }
+
+  const fullPath = join(uploadsDir, rawPath);
+  const file = Bun.file(fullPath);
+
+  if (await file.exists()) {
+    const ext = rawPath.split(".").pop()?.toLowerCase() || "";
+    const headers: Record<string, string> = {
+      "X-Content-Type-Options": "nosniff",
+      "Cache-Control": "public, max-age=31536000, immutable",
+    };
+
+    // Sandboxing for SVG to prevent stored XSS attacks
+    if (ext === "svg" || ext === "xml" || ext === "html") {
+      headers["Content-Security-Policy"] = "default-src 'none'; sandbox";
+    }
+
+    return new Response(file, { headers });
+  }
+
   return c.text("File Not Found", 404);
 });
 
