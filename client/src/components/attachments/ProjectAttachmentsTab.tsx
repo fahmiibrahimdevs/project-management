@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Task, ProjectAttachment, FileCategory } from "../../types";
 import { 
   useProjectAttachments, 
@@ -11,6 +11,7 @@ import { FileUploadModal } from "./FileUploadModal";
 import { Pagination } from "../common/Pagination";
 import { showConfirm, notifySuccess, notifyError } from "../../utils/swal";
 import { useDebounce } from "../../hooks/useDebounce";
+import { getCategoryBadgeClass } from "../bom/BOMCategoryMasterPage";
 import Swal from "sweetalert2";
 import { 
   UploadCloud, 
@@ -26,7 +27,6 @@ import {
   Edit2,
   Trash2,
   HardDrive,
-  Filter,
   Grid,
   List as ListIcon,
   Layers,
@@ -34,13 +34,78 @@ import {
   User,
   Plus,
   ArrowUpDown,
-  Sparkles
+  Sparkles,
+  ChevronDown,
+  ChevronRight,
+  FoldHorizontal,
+  UnfoldHorizontal,
+  FolderOpen
 } from "lucide-react";
 
 interface ProjectAttachmentsTabProps {
   projectId: string;
   tasks: Task[];
 }
+
+interface CategoryDefinition {
+  id: string;
+  name: string;
+  color: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+const ATTACHMENT_CATEGORIES: Record<string, CategoryDefinition> = {
+  document: {
+    id: "document",
+    name: "DOKUMEN & SPESIFIKASI (PDF / OFFICE)",
+    color: "rose",
+    description: "PDF, Lembar Spesifikasi Teknis, Laporan, Dokumen Word",
+    icon: FileText,
+  },
+  cad: {
+    id: "cad",
+    name: "CAD & 3D ENGINEERING (DWG / STEP / STL)",
+    color: "amber",
+    description: "AutoCAD Drawing (DWG/DXF), 3D Assembly (STEP/STL/SolidWorks), Gerber PCB",
+    icon: FileCode,
+  },
+  design: {
+    id: "design",
+    name: "ADOBE & DESAIN GRAFIS (PSD / AI / FIGMA)",
+    color: "purple",
+    description: "Adobe Photoshop (PSD), Illustrator (AI), InDesign (INDD), Aset Vektor UI/UX",
+    icon: Sparkles,
+  },
+  image: {
+    id: "image",
+    name: "GAMBAR & FOTO DOKUMENTASI",
+    color: "blue",
+    description: "Foto fisik perangkat, visual diagram, screenshot pengujian",
+    icon: ImageIcon,
+  },
+  spreadsheet: {
+    id: "spreadsheet",
+    name: "DATA & SPREADSHEET (XLSX / CSV)",
+    color: "emerald",
+    description: "Tabel kalkulasi Excel, data log sensor, rekap kebutuhan",
+    icon: FileSpreadsheet,
+  },
+  archive: {
+    id: "archive",
+    name: "ARSIP & KOMPRESI (ZIP / 7Z / TAR)",
+    color: "indigo",
+    description: "Paket berkas proyek terkompresi, arsip kode sumber",
+    icon: FileArchive,
+  },
+  other: {
+    id: "other",
+    name: "BERKAS LAIN-LAIN",
+    color: "slate",
+    description: "Lampiran berkas format lainnya",
+    icon: File,
+  },
+};
 
 export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachmentsTabProps) {
   const { user, isSuperUser } = useAuth();
@@ -50,9 +115,11 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebounce(searchQuery, 300);
   const [sortBy, setSortBy] = useState<"newest" | "name" | "size">("newest");
-  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
+  const [viewMode, setViewMode] = useState<"table" | "grid">("table"); // Default to Tree Table Group View
+  const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
+
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(15);
+  const [pageSize, setPageSize] = useState(25);
   
   // Modals state
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -111,8 +178,51 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
       });
   }, [attachments, activeCategory, debouncedSearch, sortBy]);
 
+  // Group items by Category for Tree Table Structure (like BOM!)
+  const groupedCategories = useMemo(() => {
+    const groups: Record<
+      string,
+      {
+        category: CategoryDefinition;
+        items: ProjectAttachment[];
+        totalBytes: number;
+      }
+    > = {};
+
+    // Initialize all categories in exact hierarchy order
+    const orderedCategoryKeys = ["document", "cad", "design", "image", "spreadsheet", "archive", "other"];
+    orderedCategoryKeys.forEach((key) => {
+      groups[key] = {
+        category: ATTACHMENT_CATEGORIES[key] || {
+          id: key,
+          name: key.toUpperCase(),
+          color: "slate",
+          description: "Berkas lainnya",
+          icon: File,
+        },
+        items: [],
+        totalBytes: 0,
+      };
+    });
+
+    // Distribute filtered attachments
+    filteredAttachments.forEach((att) => {
+      const catKey = att.category && groups[att.category] ? att.category : "other";
+      groups[catKey].items.push(att);
+      groups[catKey].totalBytes += Number(att.file_size) || 0;
+    });
+
+    // If specific activeCategory selected, return only that category
+    if (activeCategory !== "all") {
+      return Object.values(groups).filter((g) => g.category.id === activeCategory);
+    }
+
+    // Otherwise return categories that have items > 0
+    return Object.values(groups).filter((g) => g.items.length > 0);
+  }, [filteredAttachments, activeCategory]);
+
   // Auto-reset page when filters change
-  React.useEffect(() => {
+  useEffect(() => {
     setCurrentPage(1);
   }, [activeCategory, debouncedSearch, sortBy]);
 
@@ -120,6 +230,22 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
     const start = (currentPage - 1) * pageSize;
     return filteredAttachments.slice(start, start + pageSize);
   }, [filteredAttachments, currentPage, pageSize]);
+
+  const toggleCategoryCollapse = (catId: string) => {
+    setCollapsedCategories((prev) => ({
+      ...prev,
+      [catId]: !prev[catId],
+    }));
+  };
+
+  const expandAll = () => setCollapsedCategories({});
+  const collapseAll = () => {
+    const allCollapsed: Record<string, boolean> = {};
+    Object.keys(ATTACHMENT_CATEGORIES).forEach((k) => {
+      allCollapsed[k] = true;
+    });
+    setCollapsedCategories(allCollapsed);
+  };
 
   const handleRename = async (att: ProjectAttachment) => {
     const ext = att.file_name.includes(".") ? att.file_name.split(".").pop() || "" : "";
@@ -183,24 +309,24 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
   const getFileIcon = (cat?: string, ext?: string) => {
     const e = (ext || "").toLowerCase();
     if (e === "pdf" || cat === "document") {
-      return <FileText className="w-5 h-5 text-rose-600" />;
+      return <FileText className="w-4 h-4 text-rose-600" />;
     }
     if (["psd", "psb", "ai", "eps", "indd", "xd", "fig", "cdr"].includes(e) || cat === "design") {
-      return <Sparkles className="w-5 h-5 text-purple-600" />;
+      return <Sparkles className="w-4 h-4 text-purple-600" />;
     }
     if (["dwg", "dxf", "step", "stp", "iges", "igs", "stl", "obj", "blend", "sldprt", "sldasm"].includes(e) || cat === "cad") {
-      return <FileCode className="w-5 h-5 text-amber-600" />;
+      return <FileCode className="w-4 h-4 text-amber-600" />;
     }
     if (["png", "jpg", "jpeg", "webp", "gif", "svg", "bmp"].includes(e) || cat === "image") {
-      return <ImageIcon className="w-5 h-5 text-blue-600" />;
+      return <ImageIcon className="w-4 h-4 text-blue-600" />;
     }
     if (["xlsx", "xls", "csv", "tsv"].includes(e) || cat === "spreadsheet") {
-      return <FileSpreadsheet className="w-5 h-5 text-emerald-600" />;
+      return <FileSpreadsheet className="w-4 h-4 text-emerald-600" />;
     }
     if (["zip", "rar", "7z", "tar", "gz"].includes(e) || cat === "archive") {
-      return <FileArchive className="w-5 h-5 text-indigo-600" />;
+      return <FileArchive className="w-4 h-4 text-indigo-600" />;
     }
-    return <File className="w-5 h-5 text-slate-600" />;
+    return <File className="w-4 h-4 text-slate-600" />;
   };
 
   const getFileBadgeBg = (cat?: string, ext?: string) => {
@@ -221,7 +347,7 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
 
   return (
     <div className="space-y-5">
-      {/* 🌟 Top Metric Cards & Upload Action */}
+      {/* 🌟 Top Metric Cards (7 Category Highlights) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
         {/* Total Storage Used */}
         <div className="p-3 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex items-center gap-2.5">
@@ -303,7 +429,7 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
         </div>
       </div>
 
-      {/* 🛠️ Main Control Bar: Sub-tabs, Search, Sort & Upload Button */}
+      {/* 🛠️ Main Control Bar: Sub-tabs, Search, Sort & Action Controls */}
       <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-card space-y-4">
         {/* Category Filter Pills & Upload Button */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-slate-100">
@@ -399,7 +525,7 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
           </button>
         </div>
 
-        {/* Toolbar: Search, Sort & View Mode Toggle */}
+        {/* Toolbar: Search, Sort, Expand/Collapse & View Mode Toggle */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           {/* Search Box */}
           <div className="relative flex-1 min-w-[220px] max-w-md">
@@ -413,14 +539,36 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
             />
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            {/* Tree Expand / Collapse All Controls (BOM Style) */}
+            {viewMode === "table" && (
+              <div className="flex items-center gap-1 bg-slate-50 p-0.5 rounded-xl border border-slate-200/90">
+                <button
+                  type="button"
+                  onClick={expandAll}
+                  className="p-1.5 text-slate-600 hover:text-blue-600 hover:bg-white rounded-lg text-xs transition-colors"
+                  title="Buka Semua Kategori"
+                >
+                  <UnfoldHorizontal className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={collapseAll}
+                  className="p-1.5 text-slate-600 hover:text-blue-600 hover:bg-white rounded-lg text-xs transition-colors"
+                  title="Tutup Semua Kategori"
+                >
+                  <FoldHorizontal className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
             {/* Sort Dropdown */}
             <div className="flex items-center gap-1.5 text-xs text-slate-600">
               <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none font-medium"
+                className="px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none font-medium cursor-pointer"
               >
                 <option value="newest">Terbaru</option>
                 <option value="name">Nama (A - Z)</option>
@@ -428,45 +576,45 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
               </select>
             </div>
 
-            {/* View Mode Toggle */}
+            {/* View Mode Toggle: Tree Table vs Grid Kartu */}
             <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200">
+              <button
+                type="button"
+                onClick={() => setViewMode("table")}
+                className={`p-1.5 rounded-lg transition-all ${
+                  viewMode === "table"
+                    ? "bg-white text-blue-600 shadow-2xs font-semibold"
+                    : "text-slate-500 hover:text-slate-800"
+                }`}
+                title="Tampilan Tree Table Group (Kategori)"
+              >
+                <ListIcon className="w-3.5 h-3.5" />
+              </button>
               <button
                 type="button"
                 onClick={() => setViewMode("grid")}
                 className={`p-1.5 rounded-lg transition-all ${
                   viewMode === "grid"
-                    ? "bg-white text-blue-600 shadow-2xs"
+                    ? "bg-white text-blue-600 shadow-2xs font-semibold"
                     : "text-slate-500 hover:text-slate-800"
                 }`}
                 title="Tampilan Grid Kartu"
               >
                 <Grid className="w-3.5 h-3.5" />
               </button>
-              <button
-                type="button"
-                onClick={() => setViewMode("table")}
-                className={`p-1.5 rounded-lg transition-all ${
-                  viewMode === "table"
-                    ? "bg-white text-blue-600 shadow-2xs"
-                    : "text-slate-500 hover:text-slate-800"
-                }`}
-                title="Tampilan Tabel"
-              >
-                <ListIcon className="w-3.5 h-3.5" />
-              </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 📁 Content View (Grid or Table) */}
+      {/* 📁 Content View (Tree Table Group or Grid Cards) */}
       {isLoading ? (
-        <div className="p-12 text-center bg-white rounded-2xl border border-slate-200">
+        <div className="p-12 text-center bg-white rounded-2xl border border-slate-200 shadow-card">
           <div className="w-8 h-8 mx-auto border-3 border-blue-600/30 border-t-blue-600 rounded-full animate-spin mb-3" />
           <p className="text-xs text-slate-500">Memuat lampiran berkas proyek...</p>
         </div>
       ) : filteredAttachments.length === 0 ? (
-        <div className="p-12 text-center bg-white rounded-2xl border border-slate-200 space-y-3">
+        <div className="p-12 text-center bg-white rounded-2xl border border-slate-200 shadow-card space-y-3">
           <div className="w-14 h-14 mx-auto rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center">
             <UploadCloud className="w-7 h-7" />
           </div>
@@ -485,8 +633,208 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
             <span>Unggah Berkas Sekarang</span>
           </button>
         </div>
-      ) : viewMode === "grid" ? (
-        /* 🔳 GRID CARDS VIEW */
+      ) : viewMode === "table" ? (
+        /* 🌳 1 SINGLE CARD: TREE TABLE GROUP BY CATEGORY (BOM Style) */
+        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-card overflow-hidden">
+          <div className="w-full overflow-x-auto">
+            <table className="w-full text-left text-xs table-auto">
+              <thead className="bg-slate-50/90 border-b border-slate-200 text-slate-500 font-semibold uppercase tracking-wider text-[11px]">
+                <tr>
+                  <th className="py-3 px-3 sm:px-4 w-[36%]">Kategori & Nama Berkas</th>
+                  <th className="py-3 px-2 sm:px-3 text-center w-[8%]">Tipe</th>
+                  <th className="py-3 px-2 sm:px-3 text-right w-[10%]">Ukuran</th>
+                  <th className="py-3 px-2 sm:px-3 w-[20%]">Kaitan Proyek / Task</th>
+                  <th className="py-3 px-2 sm:px-3 w-[14%]">Diunggah Oleh</th>
+                  <th className="py-3 px-2 sm:px-3 text-center w-[12%]">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-700">
+                {groupedCategories.map((group) => {
+                  const cat = group.category;
+                  const isCollapsed = collapsedCategories[cat.id];
+                  const groupItems = group.items;
+
+                  return (
+                    <React.Fragment key={cat.id}>
+                      {/* Category Header Row (Parent Tree Node) */}
+                      <tr
+                        onClick={() => toggleCategoryCollapse(cat.id)}
+                        className="bg-slate-100/80 hover:bg-slate-200/60 border-y border-slate-200/90 cursor-pointer select-none transition-colors"
+                      >
+                        <td colSpan={4} className="py-2.5 px-3 sm:px-4">
+                          <div className="flex items-center gap-2.5">
+                            <button
+                              type="button"
+                              className="text-slate-500 hover:text-slate-700 transition-transform"
+                            >
+                              {isCollapsed ? (
+                                <ChevronRight className="w-4 h-4" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4" />
+                              )}
+                            </button>
+
+                            <span
+                              className={`px-2.5 py-0.5 rounded-lg text-xs font-extrabold border tracking-wider uppercase shrink-0 ${getCategoryBadgeClass(
+                                cat.color
+                              )}`}
+                            >
+                              {cat.name}
+                            </span>
+
+                            <span className="text-[11px] font-bold text-slate-600 bg-white px-2 py-0.5 rounded-md border border-slate-200/90 shadow-2xs">
+                              {groupItems.length} Berkas
+                            </span>
+
+                            {cat.description && (
+                              <span className="text-[11px] text-slate-500 truncate hidden md:inline font-normal">
+                                · {cat.description}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        <td colSpan={2} className="py-2.5 px-3 sm:px-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <span className="text-[10px] text-slate-500">Total Ukuran:</span>
+                            <span className="text-xs font-mono font-extrabold text-slate-900 bg-white px-2 py-0.5 rounded-md border border-slate-200/90 shadow-2xs">
+                              {formatFileSize(group.totalBytes)}
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+
+                      {/* Child File Rows (Tree Branch Nodes) */}
+                      {!isCollapsed &&
+                        groupItems.map((att) => {
+                          const ext = att.file_name.split(".").pop()?.toLowerCase() || "";
+                          const isImage = ["png", "jpg", "jpeg", "webp", "gif", "svg"].includes(ext) || att.category === "image";
+
+                          return (
+                            <tr
+                              key={att.id}
+                              className="hover:bg-blue-50/30 transition-colors bg-white group"
+                            >
+                              {/* 1. File Name with Tree Connector and Icon */}
+                              <td className="py-3 px-3 sm:px-4">
+                                <div className="flex items-center gap-2.5 pl-4 sm:pl-6">
+                                  <span className="text-slate-300 group-hover:text-blue-500 font-mono text-xs select-none shrink-0">
+                                    ↳
+                                  </span>
+
+                                  {/* Thumbnail / Icon */}
+                                  <div
+                                    onClick={() => setPreviewAttachment(att)}
+                                    className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 cursor-pointer hover:bg-blue-50 transition-colors"
+                                  >
+                                    {isImage ? (
+                                      <img src={att.file_url} alt="" className="w-full h-full object-cover rounded-lg" />
+                                    ) : (
+                                      getFileIcon(att.category, ext)
+                                    )}
+                                  </div>
+
+                                  <div className="min-w-0">
+                                    <span
+                                      onClick={() => setPreviewAttachment(att)}
+                                      className="font-bold text-slate-900 hover:text-blue-600 transition-colors line-clamp-1 cursor-pointer break-all"
+                                      title={att.file_name}
+                                    >
+                                      {att.file_name}
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+
+                              {/* 2. Extension / Type Badge */}
+                              <td className="py-3 px-2 sm:px-3 text-center">
+                                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md border uppercase whitespace-nowrap ${getFileBadgeBg(att.category, ext)}`}>
+                                  .{ext || "FILE"}
+                                </span>
+                              </td>
+
+                              {/* 3. File Size */}
+                              <td className="py-3 px-2 sm:px-3 text-right font-mono font-bold text-slate-700 whitespace-nowrap">
+                                {formatFileSize(att.file_size)}
+                              </td>
+
+                              {/* 4. Linked Task / Source */}
+                              <td className="py-3 px-2 sm:px-3">
+                                {att.task_title ? (
+                                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200 max-w-[220px] truncate">
+                                    <Layers className="w-3 h-3 shrink-0" />
+                                    <span className="truncate">Task: {att.task_title}</span>
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-[11px] text-slate-600 font-medium bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                                    <FolderOpen className="w-3 h-3 text-slate-400" />
+                                    <span>Pusat Dokumen Proyek</span>
+                                  </span>
+                                )}
+                              </td>
+
+                              {/* 5. Uploader */}
+                              <td className="py-3 px-2 sm:px-3 font-medium text-slate-700 whitespace-nowrap">
+                                <div className="flex items-center gap-1.5">
+                                  <div
+                                    className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 shadow-2xs"
+                                    style={{ backgroundColor: att.uploaded_by_avatar_color || "#3b82f6" }}
+                                  >
+                                    {(att.uploaded_by_name || "A").charAt(0).toUpperCase()}
+                                  </div>
+                                  <span className="truncate max-w-[110px]">{att.uploaded_by_name || "Anggota Tim"}</span>
+                                </div>
+                              </td>
+
+                              {/* 6. Action Icons */}
+                              <td className="py-3 px-2 sm:px-3 text-center whitespace-nowrap">
+                                <div className="flex items-center justify-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => setPreviewAttachment(att)}
+                                    className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                    title="Pratinjau File"
+                                  >
+                                    <Eye className="w-3.5 h-3.5" />
+                                  </button>
+                                  <a
+                                    href={att.file_url}
+                                    download={att.file_name}
+                                    className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                                    title="Unduh File"
+                                  >
+                                    <Download className="w-3.5 h-3.5" />
+                                  </a>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRename(att)}
+                                    className="p-1.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                                    title="Ganti Nama File"
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDelete(att)}
+                                    className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                                    title="Hapus File"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        /* 🔳 2. GRID CARDS VIEW (Secondary Alternative) */
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {paginatedAttachments.map((att) => {
             const ext = att.file_name.split(".").pop()?.toLowerCase() || "";
@@ -499,7 +847,6 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
               >
                 {/* Card Header & Thumbnail */}
                 <div className="space-y-3">
-                  {/* Thumbnail / File Header */}
                   {isImage ? (
                     <div 
                       onClick={() => setPreviewAttachment(att)}
@@ -525,7 +872,6 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
                     </div>
                   )}
 
-                  {/* Title & Metadata */}
                   <div>
                     <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
                       <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md border uppercase ${getFileBadgeBg(att.category, ext)}`}>
@@ -544,7 +890,6 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
                       {att.file_name}
                     </h4>
 
-                    {/* Source / Task Badge */}
                     <div className="mt-2">
                       {att.task_title ? (
                         <span className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200 max-w-full truncate">
@@ -553,7 +898,7 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
-                          📁 Dokumen Proyek
+                          📁 Pusat Dokumen Proyek
                         </span>
                       )}
                     </div>
@@ -572,7 +917,6 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
                     )}
                   </div>
 
-                  {/* Action Icons */}
                   <div className="flex items-center gap-1 shrink-0">
                     <button
                       type="button"
@@ -612,146 +956,36 @@ export function ProjectAttachmentsTab({ projectId, tasks = [] }: ProjectAttachme
             );
           })}
         </div>
-      ) : (
-        /* 📋 TABLE VIEW */
-        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
-                  <th className="py-3 px-4">Nama Berkas</th>
-                  <th className="py-3 px-3">Tipe</th>
-                  <th className="py-3 px-3">Ukuran</th>
-                  <th className="py-3 px-3">Kaitan Proyek / Task</th>
-                  <th className="py-3 px-3">Diunggah Oleh</th>
-                  <th className="py-3 px-3">Waktu</th>
-                  <th className="py-3 px-4 text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
-                {paginatedAttachments.map((att) => {
-                  const ext = att.file_name.split(".").pop()?.toLowerCase() || "";
-                  const isImage = ["png", "jpg", "jpeg", "webp", "gif", "svg"].includes(ext) || att.category === "image";
-
-                  return (
-                    <tr key={att.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3 px-4 max-w-xs">
-                        <div className="flex items-center gap-2.5">
-                          <div 
-                            onClick={() => setPreviewAttachment(att)}
-                            className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 cursor-pointer hover:bg-blue-50"
-                          >
-                            {isImage ? (
-                              <img src={att.file_url} alt="" className="w-full h-full object-cover rounded-lg" />
-                            ) : (
-                              getFileIcon(att.category, ext)
-                            )}
-                          </div>
-                          <span 
-                            onClick={() => setPreviewAttachment(att)}
-                            className="font-bold text-slate-900 hover:text-blue-600 transition-colors line-clamp-1 cursor-pointer"
-                            title={att.file_name}
-                          >
-                            {att.file_name}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-3">
-                        <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md border uppercase ${getFileBadgeBg(att.category, ext)}`}>
-                          .{ext || "FILE"}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 font-medium text-slate-600 whitespace-nowrap">
-                        {formatFileSize(att.file_size)}
-                      </td>
-                      <td className="py-3 px-3">
-                        {att.task_title ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200 max-w-xs truncate">
-                            <Layers className="w-3 h-3 shrink-0" />
-                            <span className="truncate">Task: {att.task_title}</span>
-                          </span>
-                        ) : (
-                          <span className="text-[11px] text-slate-500 font-medium">
-                            📁 Dokumen Umum
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3 px-3 font-medium text-slate-700 whitespace-nowrap">
-                        {att.uploaded_by_name || "Anggota Tim"}
-                      </td>
-                      <td className="py-3 px-3 text-slate-500 whitespace-nowrap text-[11px]">
-                        {att.created_at}
-                      </td>
-                      <td className="py-3 px-4 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-1">
-                          <button
-                            type="button"
-                            onClick={() => setPreviewAttachment(att)}
-                            className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="Pratinjau File"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                          </button>
-                          <a
-                            href={att.file_url}
-                            download={att.file_name}
-                            className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                            title="Unduh File"
-                          >
-                            <Download className="w-3.5 h-3.5" />
-                          </a>
-                          <button
-                            type="button"
-                            onClick={() => handleRename(att)}
-                            className="p-1.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
-                            title="Ganti Nama File"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(att)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                            title="Hapus File"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
       )}
 
-      {/* Pagination Controls */}
-      <Pagination
-        currentPage={currentPage}
-        totalItems={filteredAttachments.length}
-        pageSize={pageSize}
-        pageSizeOptions={[1, 15, 30, 50, 100, 250, 500]}
-        onPageChange={setCurrentPage}
-        onPageSizeChange={setPageSize}
-      />
+      {/* 📄 Pagination */}
+      {filteredAttachments.length > pageSize && (
+        <Pagination
+          currentPage={currentPage}
+          totalItems={filteredAttachments.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
 
-      {/* 🖼️ Direct In-App Preview Modal (PDF Viewer / Image Lightbox) */}
+      {/* 📤 Upload Modal */}
+      {isUploadModalOpen && (
+        <FileUploadModal
+          isOpen={isUploadModalOpen}
+          projectId={projectId}
+          tasks={tasks}
+          onClose={() => setIsUploadModalOpen(false)}
+        />
+      )}
+
+      {/* 🔍 File Preview Modal */}
       {previewAttachment && (
         <FilePreviewModal
           attachment={previewAttachment}
           onClose={() => setPreviewAttachment(null)}
         />
       )}
-
-      {/* 📤 Upload Modal (Max 100MB) */}
-      <FileUploadModal
-        isOpen={isUploadModalOpen}
-        projectId={projectId}
-        tasks={tasks}
-        onClose={() => setIsUploadModalOpen(false)}
-      />
     </div>
   );
 }
