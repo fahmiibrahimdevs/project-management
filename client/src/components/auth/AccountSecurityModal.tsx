@@ -3,6 +3,7 @@ import { Modal } from "../common/Modal";
 import { Avatar } from "../common/Avatar";
 import { useAuth } from "../../context/AuthContext";
 import { useUpdateProfile } from "../../api/auth";
+import { notifySuccess, notifyError, notifyWarning } from "../../utils/swal";
 import { 
   User as UserIcon, 
   Lock, 
@@ -97,6 +98,7 @@ export function AccountSecurityModal({
     setErrorMessage("");
 
     if (!name.trim()) {
+      notifyWarning("Validasi Gagal", "Nama lengkap tidak boleh kosong");
       setErrorMessage("Nama lengkap tidak boleh kosong");
       return;
     }
@@ -118,10 +120,12 @@ export function AccountSecurityModal({
           if (res.user) {
             updateCurrentUser(res.user);
           }
+          notifySuccess("Profil Diperbarui", "Perubahan profil akun Anda berhasil disimpan.");
           setSuccessMessage("Profil akun Anda berhasil diperbarui!");
           setTimeout(() => setSuccessMessage(""), 4000);
         },
         onError: (err: any) => {
+          notifyError("Gagal Memperbarui Profil", err.message || "Terjadi kesalahan saat menyimpan profil");
           setErrorMessage(err.message || "Gagal memperbarui profil");
         },
       }
@@ -134,16 +138,19 @@ export function AccountSecurityModal({
     setErrorMessage("");
 
     if (!currentPassword) {
+      notifyWarning("Validasi Gagal", "Masukkan kata sandi saat ini");
       setErrorMessage("Masukkan kata sandi saat ini");
       return;
     }
 
     if (!newPassword || newPassword.length < 1) {
+      notifyWarning("Validasi Gagal", "Kata sandi baru tidak boleh kosong");
       setErrorMessage("Kata sandi baru tidak boleh kosong");
       return;
     }
 
     if (newPassword !== confirmPassword) {
+      notifyWarning("Validasi Gagal", "Konfirmasi kata sandi baru tidak cocok");
       setErrorMessage("Konfirmasi kata sandi baru tidak cocok");
       return;
     }
@@ -158,10 +165,12 @@ export function AccountSecurityModal({
           setCurrentPassword("");
           setNewPassword("");
           setConfirmPassword("");
+          notifySuccess("Kata Sandi Diperbarui", "Kata sandi akun Anda berhasil diubah. Gunakan kata sandi baru untuk login berikutnya.");
           setSuccessMessage("Kata sandi berhasil diubah! Gunakan kata sandi baru untuk login berikutnya.");
           setTimeout(() => setSuccessMessage(""), 5000);
         },
         onError: (err: any) => {
+          notifyError("Gagal Mengubah Kata Sandi", err.message || "Kata sandi saat ini mungkin salah");
           setErrorMessage(err.message || "Gagal mengubah kata sandi");
         },
       }

@@ -337,9 +337,9 @@ export function GlobalDashboard({
                 {/* Progress Bar */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-slate-700 flex items-center gap-1.5">
-                      <TrendingUp className="w-3.5 h-3.5 text-blue-600" />
-                      Progres Kriteria Checklist
+                    <span className="font-semibold text-slate-700 flex items-center gap-1.5 whitespace-nowrap">
+                      <TrendingUp className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                      Progres Proyek
                     </span>
                     <span className="font-bold text-slate-900">{progressPercent}%</span>
                   </div>
@@ -354,19 +354,19 @@ export function GlobalDashboard({
                   <div className="flex items-center justify-between text-[11px] text-slate-500">
                     {totalCriteria > 0 ? (
                       <>
-                        <span>{completedCriteria} dari {totalCriteria} kriteria selesai</span>
-                        <span className="text-slate-400 font-medium">({completedTasks}/{activeTasks} task)</span>
+                        <span className="truncate">{completedCriteria} dari {totalCriteria} kriteria selesai</span>
+                        <span className="text-slate-400 font-medium shrink-0">({completedTasks}/{activeTasks} task)</span>
                       </>
                     ) : (
                       <>
-                        <span>{completedTasks} dari {activeTasks} aktif selesai</span>
-                        <span className="text-slate-400 font-medium">({backlogTasks} perencanaan)</span>
+                        <span className="truncate">{completedTasks} dari {activeTasks} aktif selesai</span>
+                        <span className="text-slate-400 font-medium shrink-0">({backlogTasks} perencanaan)</span>
                       </>
                     )}
                   </div>
                 </div>
 
-                {/* Sub Metrics: BOM Cost, Issues, Team Avatars */}
+                {/* Sub Metrics: BOM Cost, Issues, Team Personil */}
                 <div className="grid grid-cols-3 gap-2 pt-1 text-xs">
                   {/* BOM Total */}
                   <div className="p-2.5 bg-slate-50/70 rounded-xl border border-slate-200/60 flex flex-col justify-between">
@@ -386,9 +386,11 @@ export function GlobalDashboard({
                       Issue Log
                     </span>
                     <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="font-bold text-slate-800 text-xs">{openIssues} Masalah</span>
+                      <span className="font-bold text-slate-800 text-xs truncate">
+                        {openIssues} Masalah
+                      </span>
                       {openIssues > 0 && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping shrink-0" />
                       )}
                     </div>
                   </div>
@@ -399,22 +401,10 @@ export function GlobalDashboard({
                       <Users className="w-3 h-3 text-purple-600" />
                       Personil
                     </span>
-                    <div className="flex items-center justify-between mt-0.5">
-                      <span className="font-bold text-slate-800 text-xs">
+                    <div className="mt-0.5">
+                      <span className="font-bold text-slate-800 text-xs truncate block">
                         {(project.members?.length ?? project.member_count) || 0} Anggota
                       </span>
-                      {project.members && project.members.length > 0 && (
-                        <div className="flex items-center -space-x-1">
-                          {project.members.slice(0, 2).map((m) => (
-                            <Avatar key={m.id} name={m.name} color={m.avatar_color} size="xs" className="w-4 h-4 text-[8px]" />
-                          ))}
-                          {project.members.length > 2 && (
-                            <span className="text-[9px] text-slate-500 font-bold ml-1">
-                              +{project.members.length - 2}
-                            </span>
-                          )}
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>

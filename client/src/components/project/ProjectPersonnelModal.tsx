@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Modal } from "../common/Modal";
 import { Project, Member } from "../../types";
 import { useUpdateProject } from "../../api/client";
+import { notifySuccess, notifyError } from "../../utils/swal";
 import { Avatar } from "../common/Avatar";
 import { 
   Users, 
@@ -90,7 +91,11 @@ export function ProjectPersonnelModal({
       },
       {
         onSuccess: () => {
+          notifySuccess("Personil Diperbarui", "Daftar personil proyek berhasil disimpan.");
           onClose();
+        },
+        onError: (err: any) => {
+          notifyError("Gagal Memperbarui Personil", err.message || "Terjadi kesalahan saat menyimpan personil proyek.");
         },
       }
     );
