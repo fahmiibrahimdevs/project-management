@@ -4,6 +4,7 @@ import { PriorityBadge, StatusBadge, DeadlineBadge } from "../common/Badge";
 import { Avatar } from "../common/Avatar";
 import { AssigneeSelector } from "../common/AssigneeSelector";
 import { AssigneeSidePanel } from "../common/AssigneeSidePanel";
+import { AttachmentSidePanel } from "../attachments/AttachmentSidePanel";
 import { Task, TaskPriority, TaskStatus, Member, AcceptanceCriterion, TaskComment, TaskAttachment } from "../../types";
 import { useAuth } from "../../context/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
@@ -102,6 +103,7 @@ export function TaskDetailModal({
   const [uploadProgressText, setUploadProgressText] = useState("");
   const [isDragOver, setIsDragOver] = useState(false);
   const [isAssigneePickerOpen, setIsAssigneePickerOpen] = useState(false);
+  const [previewAttachment, setPreviewAttachment] = useState<TaskAttachment | null>(null);
 
   useEffect(() => {
     if (task) {
@@ -394,8 +396,40 @@ export function TaskDetailModal({
           fileName: finalFileName,
         });
         notifySuccess("Nama Berkas Diperbarui", `Menjadi "${finalFileName}"`);
+        if (previewAttachment && previewAttachment.id === att.id) {
+          setPreviewAttachment({
+            ...previewAttachment,
+            file_name: finalFileName,
+          });
+        }
       } catch (err: any) {
         notifyError("Gagal Mengubah Nama", err.message || "Terjadi kesalahan.");
+      }
+    }
+  };
+
+  const handleDeleteAttachment = async (att: TaskAttachment) => {
+    const confirmed = await showConfirm({
+      title: "Hapus File Lampiran?",
+      text: `File "${att.file_name}" akan dihapus permanen dari task dan berkas proyek.`,
+      icon: "warning",
+      confirmButtonText: "Ya, Hapus File",
+      cancelButtonText: "Batal",
+      isDanger: true,
+    });
+
+    if (confirmed) {
+      try {
+        await deleteAttachmentMutation.mutateAsync({
+          taskId: task.id,
+          attachmentId: att.id,
+        });
+        notifySuccess("File Berhasil Dihapus");
+        if (previewAttachment && previewAttachment.id === att.id) {
+          setPreviewAttachment(null);
+        }
+      } catch (err: any) {
+        notifyError("Gagal Menghapus File", err.message || "Terjadi kesalahan.");
       }
     }
   };
@@ -427,7 +461,19 @@ export function TaskDetailModal({
   const completedCount = criteria.filter((c: AcceptanceCriterion) => c.is_completed === 1).length;
   const progressPercent = criteria.length > 0 ? Math.round((completedCount / criteria.length) * 100) : 0;
 
-  const assigneeSidePanel = isAssigneePickerOpen ? (
+  const currentPreviewAttachment = previewAttachment
+    ? task.attachments?.find((a: TaskAttachment) => a.id === previewAttachment.id) || previewAttachment
+    : null;
+
+  const activeSidePanel = currentPreviewAttachment ? (
+    <AttachmentSidePanel
+      attachment={currentPreviewAttachment}
+      onClose={() => setPreviewAttachment(null)}
+      onRename={handleRenameAttachment}
+      onDelete={handleDeleteAttachment}
+      canManage={canUploadAttachment}
+    />
+  ) : isAssigneePickerOpen ? (
     <AssigneeSidePanel
       members={members}
       selectedIds={selectedAssigneeIds}
@@ -442,7 +488,7 @@ export function TaskDetailModal({
       onClose={onClose}
       title="Detail & Progres Task"
       maxWidth="4xl"
-      sidePanel={assigneeSidePanel}
+      sidePanel={activeSidePanel}
     >
       <div className="space-y-6">
         {/* Header: Project Code, Creator Info & Action Buttons */}
@@ -660,7 +706,12 @@ export function TaskDetailModal({
             onChange={handleAssigneesChange}
             disabled={!isSuperUser}
             isOpen={isAssigneePickerOpen}
-            onToggleOpen={() => setIsAssigneePickerOpen(!isAssigneePickerOpen)}
+            onToggleOpen={() => {
+              if (!isAssigneePickerOpen) {
+                setPreviewAttachment(null);
+              }
+              setIsAssigneePickerOpen(!isAssigneePickerOpen);
+            }}
             label="Pelaksana Tugas yang Ditugaskan (Assignee)"
           />
         </div>
@@ -1051,67 +1102,103 @@ export function TaskDetailModal({
               {(task.attachments || []).length === 0 ? (
                 <p className="text-xs text-slate-400 italic py-2">Belum ada file lampiran.</p>
               ) : (
-                task.attachments?.map((att: TaskAttachment) => (
-                  <div
-                    key={att.id}
-                    className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-slate-200/80 shadow-2xs group"
-                  >
-                    <a
-                      href={getDownloadUrl(att.file_url, att.file_name)}
-                      download={att.file_name}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 min-w-0 flex-1 hover:text-blue-600 transition-colors"
-                      title={`Klik untuk mengunduh ${att.file_name}`}
+                task.attachments?.map((att: TaskAttachment) => {
+                  const isSelected = currentPreviewAttachment?.id === att.id;
+                  return (
+                    <div
+                      key={att.id}
+                      className={`flex items-center justify-between p-2.5 rounded-xl border transition-all group ${
+                        isSelected
+                          ? "bg-blue-50/90 border-blue-400 ring-2 ring-blue-400/20 shadow-xs"
+                          : "bg-white border-slate-200/80 hover:bg-slate-50/90 hover:border-slate-300 shadow-2xs"
+                      }`}
                     >
-                      <File className="w-4 h-4 text-blue-500 shrink-0" />
-                      <div className="truncate">
-                        <p className="text-xs font-semibold text-slate-800 group-hover:text-blue-600 truncate">{att.file_name}</p>
-                        <p className="text-[10px] text-slate-400">
-                          {Math.round(att.file_size / 1024)} KB
-                        </p>
-                      </div>
-                    </a>
-
-                    <div className="flex items-center gap-1 shrink-0 ml-2">
-                      <a
-                        href={getDownloadUrl(att.file_url, att.file_name)}
-                        download={att.file_name}
-                        className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                        title="Unduh Berkas"
+                      {/* Clickable Row to open Floating Side Preview Panel */}
+                      <div
+                        onClick={() => {
+                          setIsAssigneePickerOpen(false);
+                          setPreviewAttachment(att);
+                        }}
+                        className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer select-none"
+                        title={`Klik untuk membuka pratinjau ${att.file_name}`}
                       >
-                        <Download className="w-3.5 h-3.5" />
-                      </a>
+                        <div
+                          className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                            isSelected
+                              ? "bg-blue-600 text-white shadow-xs"
+                              : "bg-blue-50 text-blue-600 group-hover:bg-blue-100"
+                          }`}
+                        >
+                          <File className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="truncate flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p
+                              className={`text-xs font-semibold truncate transition-colors ${
+                                isSelected
+                                  ? "text-blue-900 font-bold"
+                                  : "text-slate-800 group-hover:text-blue-600"
+                              }`}
+                            >
+                              {att.file_name}
+                            </p>
+                            {isSelected && (
+                              <span className="text-[9px] font-bold text-blue-700 bg-blue-100/90 px-1.5 py-0.2 rounded shrink-0 flex items-center gap-0.5">
+                                <Eye className="w-2.5 h-2.5" />
+                                Dibuka
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-slate-400 font-medium">
+                            {Math.round(att.file_size / 1024)} KB • Klik untuk pratinjau
+                          </p>
+                        </div>
+                      </div>
 
-                      {canUploadAttachment && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => handleRenameAttachment(att)}
-                            className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
-                            title="Ganti Nama Berkas"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
+                      {/* Quick Action Buttons */}
+                      <div className="flex items-center gap-1 shrink-0 ml-2">
+                        {/* Direct Download Button (without opening side panel) */}
+                        <a
+                          href={getDownloadUrl(att.file_url, att.file_name)}
+                          download={att.file_name}
+                          className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                          title="Unduh Berkas Langsung"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                        </a>
 
-                          <button
-                            type="button"
-                            onClick={() =>
-                              deleteAttachmentMutation.mutate({
-                                taskId: task.id,
-                                attachmentId: att.id,
-                              })
-                            }
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                            title="Hapus File Lampiran"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </>
-                      )}
+                        {canUploadAttachment && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRenameAttachment(att);
+                              }}
+                              className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer"
+                              title="Ganti Nama Berkas"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteAttachment(att);
+                              }}
+                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                              title="Hapus File Lampiran"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
