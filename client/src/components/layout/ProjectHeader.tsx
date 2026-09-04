@@ -146,12 +146,12 @@ export function ProjectHeader({
           {/* Card 1: Progress Metric (🔵 Blue) */}
           <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-card flex flex-col justify-between">
             <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-              <span className="font-semibold flex items-center gap-1.5 text-blue-700">
-                <TrendingUp className="w-4 h-4 text-blue-600" />
-                Progres Kriteria Checklist
+              <span className="font-semibold flex items-center gap-1.5 text-blue-700 whitespace-nowrap">
+                <TrendingUp className="w-4 h-4 text-blue-600 shrink-0" />
+                Progres Proyek
               </span>
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800">
-                {totalCriteria > 0 ? `${completedCriteria}/${totalCriteria} Kriteria` : `${completedTasks}/${activeTasks} Selesai`}
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 shrink-0">
+                {activeTasks > 0 ? `${completedTasks}/${activeTasks} Task` : `${progressPercent}% Selesai`}
               </span>
             </div>
             <div className="flex items-center gap-2.5 my-0.5">
@@ -165,16 +165,18 @@ export function ProjectHeader({
                 />
               </div>
             </div>
-            <div className="text-[11px] text-slate-500 mt-1 flex justify-between">
+            <div className="text-[11px] text-slate-500 mt-1 flex items-center justify-between gap-1">
               {totalCriteria > 0 ? (
                 <>
-                  <span>{completedCriteria} dari {totalCriteria} kriteria selesai</span>
-                  <span className="text-slate-400 font-medium">({completedTasks}/{activeTasks} task)</span>
+                  <span className="truncate">{completedCriteria} dari {totalCriteria} kriteria selesai</span>
+                  <span className="text-slate-400 font-medium shrink-0">({completedTasks}/{activeTasks} task)</span>
                 </>
               ) : (
                 <>
-                  <span>{completedTasks} dari {activeTasks} aktif selesai</span>
-                  <span className="text-slate-400 font-medium">({backlogTasks} perencanaan)</span>
+                  <span className="truncate">{completedTasks} dari {activeTasks} aktif selesai</span>
+                  {backlogTasks > 0 && (
+                    <span className="text-slate-400 font-medium shrink-0">({backlogTasks} perencanaan)</span>
+                  )}
                 </>
               )}
             </div>
