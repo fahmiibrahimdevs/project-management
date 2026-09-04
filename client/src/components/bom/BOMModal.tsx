@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Modal } from "../common/Modal";
 import { BOMItem, BOMStatus, BOMPriority } from "../../types";
 import { useCreateBOMItem, useUpdateBOMItem, useBOMCategories } from "../../api/client";
 import { useAuth } from "../../context/AuthContext";
+import { SearchableSelect } from "../common/SearchableSelect";
 import { 
   DollarSign, 
   ExternalLink, 
@@ -147,21 +148,18 @@ export function BOMModal({
               <Tags className="w-3.5 h-3.5 text-blue-600" />
               <span>Kategori BOM</span>
             </label>
-            <select
+            <SearchableSelect
+              options={categories.map((cat) => ({
+                value: cat.id,
+                label: cat.name,
+                sublabel: cat.description || undefined,
+              }))}
               value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-3 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-semibold text-slate-800"
-            >
-              {categories.length === 0 ? (
-                <option value="">LAIN-LAIN</option>
-              ) : (
-                categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </option>
-                ))
-              )}
-            </select>
+              onChange={setCategoryId}
+              placeholder="-- Pilih Kategori BOM --"
+              searchPlaceholder="Cari kategori..."
+              minItemsForSearch={5}
+            />
           </div>
 
           <div className="space-y-1.5 sm:col-span-7">

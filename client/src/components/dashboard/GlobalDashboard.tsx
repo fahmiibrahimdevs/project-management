@@ -147,7 +147,7 @@ export function GlobalDashboard({
               ) : (
                 <>
                   <span>{totalCompletedTasks} dari {totalAllActiveTasks} aktif selesai</span>
-                  <span className="text-slate-400 font-medium">({totalBacklogTasks} backlog)</span>
+                  <span className="text-slate-400 font-medium">({totalBacklogTasks} perencanaan)</span>
                 </>
               )}
             </div>
@@ -360,7 +360,7 @@ export function GlobalDashboard({
                     ) : (
                       <>
                         <span>{completedTasks} dari {activeTasks} aktif selesai</span>
-                        <span className="text-slate-400 font-medium">({backlogTasks} backlog)</span>
+                        <span className="text-slate-400 font-medium">({backlogTasks} perencanaan)</span>
                       </>
                     )}
                   </div>

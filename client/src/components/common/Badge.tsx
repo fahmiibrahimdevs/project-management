@@ -106,7 +106,7 @@ export function StatusBadge({ status }: { status: TaskStatus }) {
       return <Badge variant="warning" title="Status: Ditunda Sementara">Ditunda</Badge>;
     case "backlog":
     default:
-      return <Badge variant="secondary" title="Status: Antrean / Rencana Tugas">Antrean</Badge>;
+      return <Badge variant="secondary" title="Status: Perencanaan / Rencana Tugas">Perencanaan</Badge>;
   }
 }
 

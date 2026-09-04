@@ -176,7 +176,7 @@ export function TaskListView({
               className="px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none font-medium cursor-pointer"
             >
               <option value="all">Semua Status</option>
-              <option value="backlog">Daftar Tunggu</option>
+              <option value="backlog">Perencanaan</option>
               <option value="in_progress">Sedang Dikerjakan</option>
               <option value="in_review">Dalam Peninjauan</option>
               <option value="revision">Perlu Revisi</option>

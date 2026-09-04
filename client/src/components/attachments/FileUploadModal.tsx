@@ -3,6 +3,7 @@ import { Modal } from "../common/Modal";
 import { Task } from "../../types";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../context/AuthContext";
+import { SearchableSelect } from "../common/SearchableSelect";
 import { notifySuccess, notifyError, notifyWarning } from "../../utils/swal";
 import { 
   UploadCloud, 
@@ -463,19 +464,22 @@ export function FileUploadModal({
             <Layers className="w-3.5 h-3.5 text-blue-600" />
             <span>Kaitkan Semua Berkas ke Task Tertentu (Opsional)</span>
           </label>
-          <select
-            disabled={isUploading}
+          <SearchableSelect
+            options={[
+              { value: "", label: "📁 Dokumen Umum Proyek (Tanpa Task Khusus)" },
+              ...tasks.map((t) => ({
+                value: t.id,
+                label: `Task: ${t.title}`,
+                sublabel: `Status: ${t.status.toUpperCase()}`,
+              })),
+            ]}
             value={selectedTaskId}
-            onChange={(e) => setSelectedTaskId(e.target.value)}
-            className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-800 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:opacity-75"
-          >
-            <option value="">📁 Dokumen Umum Proyek (Tanpa Task Khusus)</option>
-            {tasks.map((t) => (
-              <option key={t.id} value={t.id}>
-                Task: {t.title} ({t.status.toUpperCase()})
-              </option>
-            ))}
-          </select>
+            onChange={setSelectedTaskId}
+            disabled={isUploading}
+            placeholder="-- Pilih Task Terkait --"
+            searchPlaceholder="Cari judul task..."
+            minItemsForSearch={5}
+          />
         </div>
 
         {/* Action Buttons */}

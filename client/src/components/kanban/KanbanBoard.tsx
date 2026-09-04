@@ -27,11 +27,11 @@ const COLUMNS: Array<{
 }> = [
   {
     id: "backlog",
-    title: "Daftar Tunggu",
+    title: "Perencanaan",
     dotColor: "bg-slate-400",
     badgeBg: "bg-slate-200",
     badgeText: "text-slate-700",
-    tooltip: "Antrean tugas yang direncanakan dan belum mulai dikerjakan",
+    tooltip: "Tugas yang sedang direncanakan dan belum mulai dikerjakan",
   },
   {
     id: "in_progress",

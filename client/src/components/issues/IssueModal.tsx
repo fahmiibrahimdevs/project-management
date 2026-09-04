@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Modal } from "../common/Modal";
 import { IssueLog, IssueStatus, IssueSeverity, Member, Task } from "../../types";
 import { useCreateIssueLog, useUpdateIssueLog } from "../../api/client";
 import { useAuth } from "../../context/AuthContext";
 import { Avatar } from "../common/Avatar";
 import { RichTextEditor } from "../common/RichTextEditor";
+import { SearchableSelect } from "../common/SearchableSelect";
 import { format } from "date-fns";
 import { AlertTriangle, UserCheck } from "lucide-react";
 
@@ -182,18 +183,23 @@ export function IssueModal({
             </label>
 
             {isSuperUser ? (
-              <select
+              <SearchableSelect
+                options={members.map((m) => ({
+                  value: m.id,
+                  label: m.name,
+                  sublabel: m.job_title || m.role?.toUpperCase(),
+                  badge: (
+                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-700">
+                      {m.role?.toUpperCase()}
+                    </span>
+                  ),
+                }))}
                 value={reportedById}
-                onChange={(e) => setReportedById(e.target.value)}
-                required
-                className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              >
-                {members.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name} ({m.role}) {m.id === user?.id ? "— (Akun Anda)" : ""}
-                  </option>
-                ))}
-              </select>
+                onChange={setReportedById}
+                placeholder="-- Pilih Pelapor Masalah --"
+                searchPlaceholder="Cari nama anggota tim..."
+                minItemsForSearch={5}
+              />
             ) : (
               <div className="flex items-center gap-2 p-2 bg-slate-50 border border-slate-200 rounded-xl">
                 <Avatar
@@ -214,18 +220,22 @@ export function IssueModal({
             <label className="text-xs font-semibold text-slate-700">
               Terkait Task Kanban (Opsional)
             </label>
-            <select
+            <SearchableSelect
+              options={[
+                { value: "", label: "📁 Umum (Tidak Terkait Task Tertentu)" },
+                ...tasks.map((t) => ({
+                  value: t.id,
+                  label: t.title,
+                  sublabel: `Status: ${t.status.toUpperCase()}`,
+                })),
+              ]}
               value={taskId}
-              onChange={(e) => setTaskId(e.target.value)}
-              className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 truncate"
-            >
-              <option value="">-- Tidak Terkait Task Tertentu --</option>
-              {tasks.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.title}
-                </option>
-              ))}
-            </select>
+              onChange={setTaskId}
+              placeholder="-- Pilih Task Terkait --"
+              searchPlaceholder="Cari judul task..."
+              allowClear={true}
+              minItemsForSearch={5}
+            />
           </div>
         </div>
 

@@ -174,7 +174,7 @@ export function ProjectHeader({
               ) : (
                 <>
                   <span>{completedTasks} dari {activeTasks} aktif selesai</span>
-                  <span className="text-slate-400 font-medium">({backlogTasks} backlog)</span>
+                  <span className="text-slate-400 font-medium">({backlogTasks} perencanaan)</span>
                 </>
               )}
             </div>

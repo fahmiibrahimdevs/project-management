@@ -164,7 +164,7 @@ export function TaskCreateModal({
               title="Pilih status awal tugas saat pertama dibuat"
               className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
             >
-              <option value="backlog">Daftar Tunggu</option>
+              <option value="backlog">Perencanaan</option>
               <option value="in_progress">Sedang Dikerjakan</option>
               <option value="in_review">Dalam Peninjauan</option>
               <option value="revision">Perlu Revisi</option>
