@@ -150,8 +150,8 @@ export function ProjectHeader({
                 <TrendingUp className="w-4 h-4 text-blue-600 shrink-0" />
                 Progres Proyek
               </span>
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 shrink-0">
-                {activeTasks > 0 ? `${completedTasks}/${activeTasks} Task` : `${progressPercent}% Selesai`}
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 shrink-0 whitespace-nowrap">
+                {totalCriteria > 0 ? `${completedCriteria}/${totalCriteria} Kriteria` : `${completedTasks}/${activeTasks} Task`}
               </span>
             </div>
             <div className="flex items-center gap-2.5 my-0.5">
