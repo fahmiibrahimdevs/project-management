@@ -182,8 +182,11 @@ function MainAppContent() {
   const { data: activeProject } = useProject(selectedProjectId || undefined);
   const { data: tasks = [] } = useTasks(selectedProjectId || undefined);
 
-  // Unified available members list
+  // Unified available members list across entire workspace (for global overview & personnel manager)
   const allMembers = rawMembers.length > 0 ? rawMembers : (activeProject?.members || []);
+
+  // Members specifically assigned to the active project's team
+  const projectMembers = activeProject?.members || [];
 
   const {
     isOwner,
@@ -373,7 +376,7 @@ function MainAppContent() {
               <KanbanBoard
                 projectId={activeProject.id}
                 tasks={tasks}
-                members={allMembers}
+                members={projectMembers}
                 isProjectMember={isProjectMember}
                 onTaskClick={(task) => setActiveTaskId(task.id)}
                 onOpenCreateTask={canCreateTask ? handleOpenCreateTask : () => {}}
@@ -383,7 +386,7 @@ function MainAppContent() {
             {activeTab === "list" && (
               <TaskListView
                 tasks={tasks}
-                members={allMembers}
+                members={projectMembers}
                 isProjectMember={isProjectMember}
                 onTaskClick={(task) => setActiveTaskId(task.id)}
                 onOpenCreateTask={canCreateTask ? () => handleOpenCreateTask("backlog") : () => {}}
@@ -393,7 +396,7 @@ function MainAppContent() {
             {activeTab === "bom" && (
               <BOMView
                 projectId={activeProject.id}
-                members={allMembers}
+                members={projectMembers}
                 isProjectMember={isProjectMember}
               />
             )}
@@ -401,7 +404,7 @@ function MainAppContent() {
             {activeTab === "issues" && (
               <IssueLogView
                 projectId={activeProject.id}
-                members={allMembers}
+                members={projectMembers}
                 tasks={tasks}
                 isProjectMember={isProjectMember}
                 isCreateModalOpen={isCreateIssueOpen}
@@ -426,7 +429,7 @@ function MainAppContent() {
               <ProjectAttachmentsTab
                 projectId={activeProject.id}
                 tasks={tasks}
-                members={allMembers}
+                members={projectMembers}
                 isProjectMember={isProjectMember}
               />
             )}
@@ -455,7 +458,7 @@ function MainAppContent() {
         <TaskDetailModal
           taskId={activeTaskId}
           projectId={activeProject.id}
-          members={allMembers}
+          members={projectMembers}
           isProjectMember={isProjectMember}
           onClose={() => setActiveTaskId(null)}
         />
@@ -467,7 +470,7 @@ function MainAppContent() {
           isOpen={isCreateTaskOpen}
           projectId={activeProject.id}
           initialStatus={createTaskInitialStatus}
-          members={allMembers}
+          members={projectMembers}
           onClose={() => setIsCreateTaskOpen(false)}
         />
       )}

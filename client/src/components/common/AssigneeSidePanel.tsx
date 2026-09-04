@@ -278,7 +278,15 @@ export function AssigneeSidePanel({
 
         {/* 👥 Rich Member Cards List (Pinned Selected First + Load More) */}
         <div className="space-y-2">
-          {sortedMembers.length === 0 ? (
+          {members.length === 0 ? (
+            <div className="py-12 text-center text-xs text-slate-400 space-y-2">
+              <Users className="w-8 h-8 mx-auto text-slate-300" />
+              <p className="font-semibold text-slate-700">Belum Ada Anggota Terdaftar di Tim Proyek</p>
+              <p className="text-[11px] text-slate-400 max-w-[240px] mx-auto">
+                Silakan daftarkan personil ke dalam proyek ini terlebih dahulu melalui tab &quot;Anggota Tim&quot;.
+              </p>
+            </div>
+          ) : sortedMembers.length === 0 ? (
             <div className="py-12 text-center text-xs text-slate-400">
               <Users className="w-8 h-8 mx-auto mb-2 text-slate-300" />
               <span>Tidak ada anggota tim yang cocok dengan filter.</span>
