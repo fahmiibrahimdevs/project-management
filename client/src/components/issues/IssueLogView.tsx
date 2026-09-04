@@ -476,40 +476,40 @@ export function IssueLogView({
                           </div>
 
                           {/* 🔬 3-Stage Investigation & Resolution Flow (Unified Neutral Styling) */}
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-start">
                             {/* 1. Indikasi & Gejala */}
-                            <div className="p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/80 space-y-1.5">
+                            <div className="p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/80 space-y-2 flex flex-col">
                               <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-600 uppercase tracking-wider">
                                 <Search className="w-3.5 h-3.5 text-slate-500" />
                                 <span>1. Indikasi & Gejala</span>
                               </div>
                               <RichContentView
                                 content={issue.indication}
-                                className="text-slate-700 text-xs leading-relaxed line-clamp-3"
+                                className="text-slate-700 text-xs leading-relaxed"
                               />
                             </div>
 
                             {/* 2. Akar Masalah */}
-                            <div className="p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/80 space-y-1.5">
+                            <div className="p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/80 space-y-2 flex flex-col">
                               <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-600 uppercase tracking-wider">
                                 <HelpCircle className="w-3.5 h-3.5 text-slate-500" />
                                 <span>2. Akar Masalah</span>
                               </div>
                               <RichContentView
                                 content={issue.root_cause}
-                                className="text-slate-700 text-xs leading-relaxed line-clamp-3"
+                                className="text-slate-700 text-xs leading-relaxed"
                               />
                             </div>
 
                             {/* 3. Solusi & Penanganan */}
-                            <div className="p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/80 space-y-1.5">
+                            <div className="p-3.5 rounded-xl bg-slate-50/70 border border-slate-200/80 space-y-2 flex flex-col">
                               <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-600 uppercase tracking-wider">
                                 <CheckCircle2 className="w-3.5 h-3.5 text-slate-500" />
                                 <span>3. Solusi & Penanganan</span>
                               </div>
                               <RichContentView
                                 content={issue.solution}
-                                className="text-slate-800 text-xs font-medium leading-relaxed line-clamp-3"
+                                className="text-slate-800 text-xs font-medium leading-relaxed"
                               />
                             </div>
                           </div>
