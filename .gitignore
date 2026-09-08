@@ -41,3 +41,8 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# Local Sync Scripts (Contains VPS credentials)
+sync*.sh
+*sync*.sh
+
