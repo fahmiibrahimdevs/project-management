@@ -255,7 +255,7 @@ function MainAppContent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#f4f6f9] text-slate-900 flex flex-col font-sans">
       {/* Top Navigation Bar */}
       <Navbar
         projects={projects}
