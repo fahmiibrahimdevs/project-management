@@ -1,6 +1,6 @@
 import { join } from "path";
 import { readdirSync, statSync, existsSync, mkdirSync } from "fs";
-import { query, execute } from "../db/database";
+import { pool, query, execute } from "../db/database";
 
 export const SYNC_TABLES = [
   "members",
@@ -131,27 +131,54 @@ export async function pullDataFromRemote(
 
   onProgress?.(`🗄️ Menerapkan data dari ${Object.keys(payload.tables).length} tabel...`);
 
-  // 1. Database sync
-  await execute("SET FOREIGN_KEY_CHECKS = 0;");
+  // 1. Database sync menggunakan koneksi tunggal dan transaksi
+  const conn = await pool.getConnection();
   let totalRowsUpdated = 0;
 
-  for (const table of SYNC_TABLES) {
-    const rows = payload.tables[table] || [];
-    if (rows.length === 0) continue;
+  try {
+    // Nonaktifkan pemeriksaan foreign key untuk session koneksi ini
+    await conn.execute("SET FOREIGN_KEY_CHECKS = 0;");
+    await conn.beginTransaction();
 
-    const columns = Object.keys(rows[0]);
-    const colList = columns.map((col) => `\`${col}\``).join(", ");
-    const placeholders = columns.map(() => "?").join(", ");
-    const insertSql = `REPLACE INTO \`${table}\` (${colList}) VALUES (${placeholders})`;
-
-    for (const row of rows) {
-      const values = columns.map((col) => row[col]);
-      await execute(insertSql, values);
-      totalRowsUpdated++;
+    // Hapus seluruh data pada tabel-tabel sync lokal agar menjadi replika bersih dari snapshot VPS
+    // Ini mencegah duplikasi data (seperti task ganda) atau data usang (orphaned records) yang sudah dihapus di VPS
+    const tablesToClear = [...SYNC_TABLES].reverse();
+    for (const table of tablesToClear) {
+      await conn.execute(`DELETE FROM \`${table}\``);
     }
-  }
 
-  await execute("SET FOREIGN_KEY_CHECKS = 1;");
+    // Masukkan data snapshot otoritatif dari VPS
+    for (const table of SYNC_TABLES) {
+      const rows = payload.tables[table] || [];
+      if (rows.length === 0) continue;
+
+      const columns = Object.keys(rows[0]);
+      const colList = columns.map((col) => `\`${col}\``).join(", ");
+      const placeholders = columns.map(() => "?").join(", ");
+      const insertSql = `INSERT INTO \`${table}\` (${colList}) VALUES (${placeholders})`;
+
+      for (const row of rows) {
+        const values = columns.map((col) => (row[col] === undefined ? null : row[col]));
+        await conn.execute(insertSql, values);
+        totalRowsUpdated++;
+      }
+    }
+
+    await conn.commit();
+  } catch (err: any) {
+    await conn.rollback();
+    console.error("Gagal menerapkan snapshot database dari VPS:", err);
+    return {
+      success: false,
+      offline: false,
+      message: `Gagal memperbarui database lokal: ${err.message}`,
+    };
+  } finally {
+    try {
+      await conn.execute("SET FOREIGN_KEY_CHECKS = 1;");
+    } catch {}
+    conn.release();
+  }
 
   // 2. Uploads sync
   onProgress?.(`📦 Memeriksa sinkronisasi berkas lampiran...`);
