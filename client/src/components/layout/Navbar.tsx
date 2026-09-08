@@ -92,6 +92,12 @@ export function Navbar({
   }, []);
 
   const [isSyncing, setIsSyncing] = useState(false);
+  const isLocalEnv = typeof window !== "undefined" && (
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1" ||
+    window.location.hostname.endsWith(".test") ||
+    window.location.hostname.endsWith(".local")
+  );
 
   const handleSyncFromVPS = async () => {
     setUserDropdownOpen(false);
@@ -303,19 +309,6 @@ export function Navbar({
               <NotificationDropdown onSelectTask={onSelectTask || (() => {})} />
             )}
 
-            {/* 🔄 Quick Sync Button */}
-            {currentUser && (
-              <button
-                type="button"
-                onClick={handleSyncFromVPS}
-                disabled={isSyncing}
-                title="Sinkronkan Data dari VPS"
-                className="p-2 rounded-xl text-slate-500 hover:text-cyan-600 hover:bg-cyan-50 transition-colors relative flex items-center justify-center disabled:opacity-50"
-              >
-                <RefreshCw className={`w-4 h-4 ${isSyncing ? "animate-spin text-cyan-600" : ""}`} />
-              </button>
-            )}
-
             {/* User Profile Dropdown */}
             {currentUser && (
               <div className="relative" ref={userDropdownRef}>
@@ -356,15 +349,18 @@ export function Navbar({
                     </div>
 
                     <div className="py-1">
-                      <button
-                        type="button"
-                        onClick={handleSyncFromVPS}
-                        disabled={isSyncing}
-                        className="w-full text-left px-4 py-2.5 text-xs text-slate-700 hover:bg-cyan-50 hover:text-cyan-700 flex items-center gap-2.5 font-medium transition-colors"
-                      >
-                        <RefreshCw className={`w-4 h-4 text-cyan-600 ${isSyncing ? "animate-spin" : ""}`} />
-                        <span>Sinkronkan dari VPS</span>
-                      </button>
+                      {/* Sync Button: Khusus Owner / PM di Lingkungan Lokal (Disembunyikan di VPS) */}
+                      {isLocalEnv && (currentUser.role === "owner" || currentUser.role === "pm") && (
+                        <button
+                          type="button"
+                          onClick={handleSyncFromVPS}
+                          disabled={isSyncing}
+                          className="w-full text-left px-4 py-2.5 text-xs text-slate-700 hover:bg-cyan-50 hover:text-cyan-700 flex items-center gap-2.5 font-medium transition-colors"
+                        >
+                          <RefreshCw className={`w-4 h-4 text-cyan-600 ${isSyncing ? "animate-spin" : ""}`} />
+                          <span>Sinkronkan dari VPS</span>
+                        </button>
+                      )}
 
                       <button
                         type="button"
