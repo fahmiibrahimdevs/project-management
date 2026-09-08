@@ -15,8 +15,12 @@ import {
   Tags,
   Menu,
   X,
+  RefreshCw,
+  CloudDownload,
 } from "lucide-react";
 import { NotificationDropdown } from "./NotificationDropdown";
+import { showAlert, notifyError, notifyWarning } from "../../utils/swal";
+import Swal from "sweetalert2";
 
 interface NavbarProps {
   projects: Project[];
@@ -86,6 +90,45 @@ export function Navbar({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const handleSyncFromVPS = async () => {
+    setUserDropdownOpen(false);
+    setIsSyncing(true);
+    Swal.fire({
+      title: "Menyinkronkan Data...",
+      text: "Menghubungi API VPS untuk menarik data database dan berkas lampiran terbaru.",
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      },
+    });
+
+    try {
+      const res = await fetch("/api/sync/pull", { method: "POST" });
+      const data = await res.json();
+      Swal.close();
+
+      if (data.offline) {
+        notifyWarning("VPS Sedang Offline", data.message);
+      } else if (data.success) {
+        showAlert({
+          icon: "success",
+          title: "Sinkronisasi Berhasil!",
+          text: data.message,
+        });
+        setTimeout(() => window.location.reload(), 1200);
+      } else {
+        notifyError("Gagal Sinkronisasi", data.error || data.message);
+      }
+    } catch (err: any) {
+      Swal.close();
+      notifyError("Koneksi Terputus", err.message || "Gagal menghubungi server lokal");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const getRoleLabel = (role?: string) => {
     switch (role) {
@@ -260,6 +303,19 @@ export function Navbar({
               <NotificationDropdown onSelectTask={onSelectTask || (() => {})} />
             )}
 
+            {/* 🔄 Quick Sync Button */}
+            {currentUser && (
+              <button
+                type="button"
+                onClick={handleSyncFromVPS}
+                disabled={isSyncing}
+                title="Sinkronkan Data dari VPS"
+                className="p-2 rounded-xl text-slate-500 hover:text-cyan-600 hover:bg-cyan-50 transition-colors relative flex items-center justify-center disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${isSyncing ? "animate-spin text-cyan-600" : ""}`} />
+              </button>
+            )}
+
             {/* User Profile Dropdown */}
             {currentUser && (
               <div className="relative" ref={userDropdownRef}>
@@ -300,6 +356,16 @@ export function Navbar({
                     </div>
 
                     <div className="py-1">
+                      <button
+                        type="button"
+                        onClick={handleSyncFromVPS}
+                        disabled={isSyncing}
+                        className="w-full text-left px-4 py-2.5 text-xs text-slate-700 hover:bg-cyan-50 hover:text-cyan-700 flex items-center gap-2.5 font-medium transition-colors"
+                      >
+                        <RefreshCw className={`w-4 h-4 text-cyan-600 ${isSyncing ? "animate-spin" : ""}`} />
+                        <span>Sinkronkan dari VPS</span>
+                      </button>
+
                       <button
                         type="button"
                         onClick={() => {

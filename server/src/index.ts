@@ -12,6 +12,7 @@ import uploadsRoute from "./routes/uploads";
 import attachmentsRoute from "./routes/attachments";
 import authRoute from "./routes/auth";
 import notificationsRoute from "./routes/notifications";
+import syncRoute from "./routes/sync";
 import { isSafeUploadPath, sanitizeFileName } from "./utils/fileSecurity";
 
 // Initialize SQLite database and seed initial data
@@ -93,6 +94,7 @@ app.route("/api/issue-logs", issueLogsRoute);
 app.route("/api/upload", uploadsRoute);
 app.route("/api/attachments", attachmentsRoute);
 app.route("/api/notifications", notificationsRoute);
+app.route("/api/sync", syncRoute);
 
 // Serve built frontend assets if dist exists
 const clientDist = join(import.meta.dir, "../../client/dist");
