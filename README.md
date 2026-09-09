@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="docs/Thumbnail_Project_Management.png" alt="ProTrack Project Management" width="100%" />
+
 # 🚀 ProTrack - Advanced Multi-Project Management & Issue Tracking System
 
 **Sistem Manajemen Proyek, Pelacakan Tugas Kanban, Anggaran Komponen (BOM), dan Analisis Masalah Lapangan (Root Cause Analysis)**
