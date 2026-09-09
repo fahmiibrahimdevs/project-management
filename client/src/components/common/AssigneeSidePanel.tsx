@@ -11,7 +11,7 @@ import {
   Crown,
   Briefcase,
   UserCheck,
-  Sparkles,
+  GraduationCap,
   CheckSquare,
   ChevronDown,
   ChevronUp,
@@ -164,7 +164,7 @@ export function AssigneeSidePanel({
       case "viewer":
         return (
           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium rounded bg-amber-100 text-amber-800 shrink-0">
-            <Sparkles className="w-3 h-3 text-amber-600" />
+            <GraduationCap className="w-3 h-3 text-amber-600" />
             Magang
           </span>
         );

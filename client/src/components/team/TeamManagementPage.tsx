@@ -20,7 +20,7 @@ import {
   Search,
   ArrowLeft,
   UserCheck,
-  Sparkles,
+  GraduationCap,
   ToggleLeft,
   ToggleRight,
   FilterX,
@@ -201,7 +201,7 @@ export function TeamManagementPage({ onBackToGlobal }: TeamManagementPageProps) 
       case "magang":
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold rounded-lg bg-amber-50 text-amber-700 border border-amber-200">
-            <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+            <GraduationCap className="w-3.5 h-3.5 text-amber-600 shrink-0" />
             <span>Magang</span>
           </span>
         );
@@ -287,7 +287,7 @@ export function TeamManagementPage({ onBackToGlobal }: TeamManagementPageProps) 
         <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500">Owner</span>
-            <span className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs">
+            <span className="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-xs">
               <Crown className="w-4 h-4" />
             </span>
           </div>
@@ -298,7 +298,7 @@ export function TeamManagementPage({ onBackToGlobal }: TeamManagementPageProps) 
         <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500">Project Manager</span>
-            <span className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold text-xs">
+            <span className="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-xs">
               <Briefcase className="w-4 h-4" />
             </span>
           </div>
@@ -309,7 +309,7 @@ export function TeamManagementPage({ onBackToGlobal }: TeamManagementPageProps) 
         <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500">Karyawan</span>
-            <span className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-xs">
+            <span className="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-xs">
               <UserCheck className="w-4 h-4" />
             </span>
           </div>
@@ -320,8 +320,8 @@ export function TeamManagementPage({ onBackToGlobal }: TeamManagementPageProps) 
         <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs col-span-2 sm:col-span-1">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500">Magang</span>
-            <span className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-xs">
-              <Sparkles className="w-4 h-4" />
+            <span className="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-xs">
+              <GraduationCap className="w-4 h-4" />
             </span>
           </div>
           <div className="text-2xl font-bold text-slate-900 mt-2">{stats.magangs}</div>

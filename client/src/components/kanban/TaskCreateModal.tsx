@@ -14,7 +14,6 @@ import {
   CheckSquare, 
   FileText, 
   Clock, 
-  Sparkles,
   UserCheck 
 } from "lucide-react";
 

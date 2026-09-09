@@ -192,11 +192,11 @@ export function IssueLogView({
     <div className="space-y-6">
       {/* Top Summary Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-        {/* 1. Total Issues */}
+        {/* 1. Total Issues (Neutral Slate) */}
         <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-card flex flex-col justify-between">
           <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-            <span className="font-semibold flex items-center gap-1.5 text-blue-700">
-              <Activity className="w-4 h-4 text-blue-600" />
+            <span className="font-semibold flex items-center gap-1.5 text-slate-700">
+              <Activity className="w-4 h-4 text-slate-600" />
               Total Log Masalah
             </span>
           </div>
@@ -208,45 +208,55 @@ export function IssueLogView({
           </div>
         </div>
 
-        {/* 2. Masalah Terbuka */}
-        <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-card flex flex-col justify-between">
-          <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-            <span className="font-semibold flex items-center gap-1.5 text-rose-700">
-              <Clock className="w-4 h-4 text-rose-600" />
-              Masalah Terbuka
-            </span>
-            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800">
-              {summary?.open || 0} Kasus
-            </span>
-          </div>
-          <div className="text-xl font-extrabold text-slate-900 tracking-tight">
-            {summary?.open || 0} Kasus
-          </div>
-          <div className="text-[11px] text-slate-500 mt-1">
-            Perlu investigasi & analisis akar masalah
-          </div>
-        </div>
+        {/* 2. Masalah Terbuka (Semantic Amber Warning if > 0, Emerald if 0) */}
+        {(() => {
+          const openCount = summary?.open || 0;
+          return (
+            <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-card flex flex-col justify-between">
+              <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
+                <span className={`font-semibold flex items-center gap-1.5 ${openCount > 0 ? "text-amber-700" : "text-slate-700"}`}>
+                  <Clock className={`w-4 h-4 ${openCount > 0 ? "text-amber-600" : "text-emerald-600"}`} />
+                  Masalah Terbuka
+                </span>
+                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${openCount > 0 ? "bg-amber-100 text-amber-800" : "bg-emerald-50 text-emerald-700 border border-emerald-200"}`}>
+                  {openCount > 0 ? `${openCount} Kasus` : "Semua Clear"}
+                </span>
+              </div>
+              <div className="text-xl font-extrabold text-slate-900 tracking-tight">
+                {openCount} Kasus
+              </div>
+              <div className="text-[11px] text-slate-500 mt-1">
+                {openCount > 0 ? "Perlu investigasi & analisis akar masalah" : "Tidak ada kendala aktif yang terbuka"}
+              </div>
+            </div>
+          );
+        })()}
 
-        {/* 3. Dampak Kritis */}
-        <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-card flex flex-col justify-between">
-          <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-            <span className="font-semibold flex items-center gap-1.5 text-amber-700">
-              <ShieldAlert className="w-4 h-4 text-amber-600" />
-              Dampak Kritis
-            </span>
-            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
-              {summary?.severity.critical || 0} Kasus
-            </span>
-          </div>
-          <div className="text-xl font-extrabold text-slate-900 tracking-tight">
-            {summary?.severity.critical || 0} Kasus
-          </div>
-          <div className="text-[11px] text-slate-500 mt-1">
-            Prioritas penanganan tertinggi
-          </div>
-        </div>
+        {/* 3. Dampak Kritis (Semantic Rose Danger if > 0, Slate if 0) */}
+        {(() => {
+          const criticalCount = summary?.severity.critical || 0;
+          return (
+            <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-card flex flex-col justify-between">
+              <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
+                <span className={`font-semibold flex items-center gap-1.5 ${criticalCount > 0 ? "text-rose-700" : "text-slate-700"}`}>
+                  <ShieldAlert className={`w-4 h-4 ${criticalCount > 0 ? "text-rose-600" : "text-slate-500"}`} />
+                  Dampak Kritis
+                </span>
+                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${criticalCount > 0 ? "bg-rose-100 text-rose-800" : "bg-slate-100 text-slate-600"}`}>
+                  {criticalCount} Kasus
+                </span>
+              </div>
+              <div className="text-xl font-extrabold text-slate-900 tracking-tight">
+                {criticalCount} Kasus
+              </div>
+              <div className="text-[11px] text-slate-500 mt-1">
+                {criticalCount > 0 ? "Prioritas penanganan tertinggi" : "Tidak ada kendala berdampak kritis"}
+              </div>
+            </div>
+          );
+        })()}
 
-        {/* 4. Selesai / Resolved */}
+        {/* 4. Selesai / Resolved (Semantic Success Emerald) */}
         <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-card flex flex-col justify-between">
           <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
             <span className="font-semibold flex items-center gap-1.5 text-emerald-700">

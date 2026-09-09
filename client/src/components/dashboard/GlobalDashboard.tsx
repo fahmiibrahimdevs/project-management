@@ -17,7 +17,6 @@ import {
   Filter,
   Package,
   Layers,
-  Sparkles,
   BarChart3,
   Flame,
   CheckSquare,
@@ -153,20 +152,20 @@ export function GlobalDashboard({
             </div>
           </div>
 
-          {/* 2. Total Projects Overview (🟢 Emerald) */}
+          {/* 2. Total Projects Overview (Neutral Slate) */}
           <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between">
             <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-              <span className="font-semibold flex items-center gap-1.5 text-emerald-700">
-                <Layers className="w-4 h-4 text-emerald-600" />
+              <span className="font-semibold flex items-center gap-1.5 text-slate-700">
+                <Layers className="w-4 h-4 text-slate-600" />
                 Total Portofolio Proyek
               </span>
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700">
                 {totalProjects} Proyek
               </span>
             </div>
             <div className="flex items-center gap-2 my-1">
               <span className="text-xl font-extrabold text-slate-900 tracking-tight">{activeProjectsCount}</span>
-              <span className="text-xs text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+              <span className="text-xs text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
                 Aktif Berjalan
               </span>
             </div>
@@ -176,11 +175,11 @@ export function GlobalDashboard({
             </div>
           </div>
 
-          {/* 3. Global BOM Cost (🟠 Amber) */}
+          {/* 3. Global BOM Cost (Neutral Slate / Financial) */}
           <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between">
             <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-              <span className="font-semibold flex items-center gap-1.5 text-amber-700">
-                <DollarSign className="w-4 h-4 text-amber-600" />
+              <span className="font-semibold flex items-center gap-1.5 text-slate-700">
+                <DollarSign className="w-4 h-4 text-slate-600" />
                 Total Anggaran Seluruh BOM
               </span>
             </div>
@@ -192,11 +191,11 @@ export function GlobalDashboard({
             </div>
           </div>
 
-          {/* 4. Global Open Issues (🔴 Rose / Red) */}
+          {/* 4. Global Open Issues (Semantic Warning: Rose if issues exist, Emerald if clear) */}
           <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between">
             <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-              <span className="font-semibold flex items-center gap-1.5 text-rose-700">
-                <AlertTriangle className="w-4 h-4 text-rose-600" />
+              <span className={`font-semibold flex items-center gap-1.5 ${totalOpenIssues > 0 ? "text-rose-700" : "text-slate-700"}`}>
+                <AlertTriangle className={`w-4 h-4 ${totalOpenIssues > 0 ? "text-rose-600" : "text-emerald-600"}`} />
                 Kendala Teknis Terbuka
               </span>
               {totalOpenIssues > 0 ? (
@@ -204,7 +203,7 @@ export function GlobalDashboard({
                   {totalOpenIssues} Terbuka
                 </span>
               ) : (
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-800 border border-rose-200">
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                   Semua Clear
                 </span>
               )}
@@ -214,7 +213,7 @@ export function GlobalDashboard({
               <span className="text-xs text-slate-500">Issue RCA Aktif</span>
             </div>
             <div className="text-[11px] text-slate-500">
-              Root cause analysis sedang diinvestigasi
+              {totalOpenIssues > 0 ? "Root cause analysis sedang diinvestigasi" : "Semua kendala teknis terselesaikan"}
             </div>
           </div>
         </div>

@@ -46,8 +46,7 @@ import {
   Download,
   Eye,
   Loader2,
-  CheckCircle2,
-  Sparkles
+  CheckCircle2
 } from "lucide-react";
 import { getDownloadUrl } from "../../utils/download";
 import { format } from "date-fns";

@@ -17,7 +17,7 @@ import {
   EyeOff,
   Crown,
   UserCheck,
-  Sparkles,
+  GraduationCap,
   Save,
   Phone,
   MapPin,
@@ -203,7 +203,7 @@ export function AccountSecurityModal({
       case "magang":
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-bold rounded-md bg-amber-50 text-amber-700 border border-amber-200">
-            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+            <GraduationCap className="w-3.5 h-3.5 text-amber-600" />
             Magang
           </span>
         );

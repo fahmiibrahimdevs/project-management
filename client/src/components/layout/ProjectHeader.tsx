@@ -182,14 +182,14 @@ export function ProjectHeader({
             </div>
           </div>
 
-          {/* Card 2: Team Allocation Metric (🔴 Merah / Rose) */}
+          {/* Card 2: Team Allocation Metric (Neutral Slate) */}
           <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-card flex flex-col justify-between">
             <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-              <span className="font-semibold flex items-center gap-1.5 text-rose-700">
-                <Users className="w-4 h-4 text-rose-600" />
+              <span className="font-semibold flex items-center gap-1.5 text-slate-700">
+                <Users className="w-4 h-4 text-slate-600" />
                 Personil Proyek
               </span>
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800">
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700">
                 {project.members?.length || 0} Anggota
               </span>
             </div>
@@ -213,11 +213,11 @@ export function ProjectHeader({
             </div>
           </div>
 
-          {/* Card 3: Open Issues Metric (🟠 Amber / Orange) */}
+          {/* Card 3: Open Issues Metric (Semantic Warning Amber if open, Emerald if 0 clear) */}
           <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-card flex flex-col justify-between">
             <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-              <span className="font-semibold flex items-center gap-1.5 text-amber-700">
-                <AlertTriangle className="w-4 h-4 text-amber-600" />
+              <span className={`font-semibold flex items-center gap-1.5 ${openIssues > 0 ? "text-amber-700" : "text-slate-700"}`}>
+                <AlertTriangle className={`w-4 h-4 ${openIssues > 0 ? "text-amber-600" : "text-emerald-600"}`} />
                 Log Permasalahan
               </span>
               {openIssues > 0 ? (
@@ -225,8 +225,8 @@ export function ProjectHeader({
                   {openIssues} Terbuka
                 </span>
               ) : (
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
-                  Aman
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+                  Aman (0 Kasus)
                 </span>
               )}
             </div>
@@ -234,15 +234,15 @@ export function ProjectHeader({
               {openIssues} Masalah
             </div>
             <div className="text-[11px] text-slate-500 mt-1">
-              Indikasi, akar masalah & solusi
+              {openIssues > 0 ? "Indikasi, akar masalah & solusi" : "Semua kendala terselesaikan"}
             </div>
           </div>
 
-          {/* Card 4: BOM Total Cost (🟢 Emerald) */}
+          {/* Card 4: BOM Total Cost (Neutral Slate / Financial) */}
           <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-card flex flex-col justify-between">
             <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-              <span className="font-semibold flex items-center gap-1.5 text-emerald-700">
-                <DollarSign className="w-4 h-4 text-emerald-600" />
+              <span className="font-semibold flex items-center gap-1.5 text-slate-700">
+                <DollarSign className="w-4 h-4 text-slate-600" />
                 Total Anggaran BOM
               </span>
             </div>

@@ -198,7 +198,7 @@ export function RichContentView({
       flushList();
 
       if (trimmed === "") {
-        renderedElements.push(<div key={idx} className="h-1" />);
+        renderedElements.push(<div key={idx} className="h-2.5" />);
       } else {
         renderedElements.push(
           <p key={idx} className="text-xs leading-relaxed text-slate-700 break-words">

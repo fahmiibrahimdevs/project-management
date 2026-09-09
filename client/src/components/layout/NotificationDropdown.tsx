@@ -17,7 +17,6 @@ import {
   Clock,
   Trash2,
   ExternalLink,
-  Sparkles,
   Inbox,
   Filter
 } from "lucide-react";

@@ -18,7 +18,7 @@ import {
   FileArchive,
   FileCode,
   File,
-  Sparkles,
+  Palette,
   Box,
   Layers,
   Calendar,
@@ -232,7 +232,7 @@ export function AttachmentSidePanel({
             </div>
           ) : isCad ? (
             /* 3. CAD TECHNICAL DRAWING / 3D MODEL CARD */
-            <div className="p-5 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 text-white space-y-3.5">
+            <div className="p-5 bg-slate-900 text-white space-y-3.5">
               <div className="flex items-center justify-between">
                 <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-inner">
                   <Box className="w-6 h-6" />
@@ -270,10 +270,10 @@ export function AttachmentSidePanel({
             </div>
           ) : isAdobe ? (
             /* 4. ADOBE CREATIVE DESIGN CARD */
-            <div className="p-5 bg-gradient-to-br from-purple-950 via-slate-900 to-indigo-950 text-white space-y-3.5">
+            <div className="p-5 bg-slate-900 text-white space-y-3.5">
               <div className="flex items-center justify-between">
                 <div className="w-12 h-12 rounded-2xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-300 shadow-inner">
-                  <Sparkles className="w-6 h-6" />
+                  <Palette className="w-6 h-6" />
                 </div>
                 <span className="px-2.5 py-1 rounded-full bg-purple-500/20 text-purple-300 font-mono font-bold text-[10px] border border-purple-500/30">
                   {ext.toUpperCase()} Design

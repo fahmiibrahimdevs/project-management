@@ -34,7 +34,7 @@ import {
   User,
   Plus,
   ArrowUpDown,
-  Sparkles,
+  Palette,
   ChevronDown,
   ChevronRight,
   FoldHorizontal,
@@ -297,7 +297,7 @@ export function ProjectAttachmentsTab({
       return <FileText className="w-4 h-4 text-rose-600" />;
     }
     if (["psd", "psb", "ai", "eps", "indd", "xd", "fig", "cdr"].includes(e) || cat === "design") {
-      return <Sparkles className="w-4 h-4 text-purple-600" />;
+      return <Palette className="w-4 h-4 text-purple-600" />;
     }
     if (["dwg", "dxf", "step", "stp", "iges", "igs", "stl", "obj", "blend", "sldprt", "sldasm"].includes(e) || cat === "cad") {
       return <FileCode className="w-4 h-4 text-amber-600" />;
@@ -379,8 +379,8 @@ export function ProjectAttachmentsTab({
 
         {/* Documents / PDF */}
         <div className="p-3 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0 border border-rose-100">
-            <FileText className="w-4 h-4" />
+          <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0 border border-slate-200">
+            <FileText className="w-4 h-4 text-slate-600" />
           </div>
           <div className="min-w-0">
             <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Dokumen/PDF</p>
@@ -390,8 +390,8 @@ export function ProjectAttachmentsTab({
 
         {/* CAD & 3D Engineering */}
         <div className="p-3 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 border border-amber-100">
-            <FileCode className="w-4 h-4" />
+          <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0 border border-slate-200">
+            <FileCode className="w-4 h-4 text-slate-600" />
           </div>
           <div className="min-w-0">
             <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">CAD / 3D</p>
@@ -401,8 +401,8 @@ export function ProjectAttachmentsTab({
 
         {/* Adobe & Design */}
         <div className="p-3 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 border border-purple-100">
-            <Sparkles className="w-4 h-4" />
+          <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0 border border-slate-200">
+            <Palette className="w-4 h-4 text-slate-600" />
           </div>
           <div className="min-w-0">
             <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Adobe/Desain</p>
@@ -412,8 +412,8 @@ export function ProjectAttachmentsTab({
 
         {/* Images */}
         <div className="p-3 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100">
-            <ImageIcon className="w-4 h-4" />
+          <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0 border border-slate-200">
+            <ImageIcon className="w-4 h-4 text-slate-600" />
           </div>
           <div className="min-w-0">
             <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Gambar</p>
@@ -423,8 +423,8 @@ export function ProjectAttachmentsTab({
 
         {/* Spreadsheets & Data */}
         <div className="p-3 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100">
-            <FileSpreadsheet className="w-4 h-4" />
+          <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0 border border-slate-200">
+            <FileSpreadsheet className="w-4 h-4 text-slate-600" />
           </div>
           <div className="min-w-0">
             <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Spreadsheet</p>

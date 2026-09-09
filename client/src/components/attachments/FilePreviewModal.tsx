@@ -18,7 +18,7 @@ import {
   Calendar,
   User,
   Layers,
-  Sparkles
+  Palette
 } from "lucide-react";
 
 interface FilePreviewModalProps {
@@ -181,7 +181,7 @@ export function FilePreviewModal({ attachment, onClose }: FilePreviewModalProps)
                   : "bg-blue-50 text-blue-600 border-blue-200"
               }`}>
                 {["psd", "psb", "ai", "eps", "indd"].includes(ext) || attachment.category === "design" ? (
-                  <Sparkles className="w-10 h-10" />
+                  <Palette className="w-10 h-10" />
                 ) : ["dwg", "dxf", "step", "stp", "stl", "sldprt", "sldasm"].includes(ext) || attachment.category === "cad" ? (
                   <FileCode className="w-10 h-10" />
                 ) : attachment.category === "spreadsheet" ? (

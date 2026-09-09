@@ -212,13 +212,13 @@ export function BOMView({ projectId, members = [], isProjectMember }: BOMViewPro
 
   return (
     <div className="space-y-5">
-      {/* Top Summary Cards (Urutan: 🔵 Biru -> 🔴 Merah -> 🟠 Orange -> 🟢 Hijau) */}
+      {/* Top Summary Cards (Semantic Flow: Total -> Sudah Checkout -> Belum Checkout -> Ditolak) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-        {/* 1. Total BOM Cost (🔵 Blue) */}
+        {/* 1. Total BOM Cost (Neutral Slate / Financial) */}
         <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-card flex flex-col justify-between">
           <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-            <span className="font-semibold flex items-center gap-1.5 text-blue-700">
-              <DollarSign className="w-4 h-4 text-blue-600" />
+            <span className="font-semibold flex items-center gap-1.5 text-slate-700">
+              <DollarSign className="w-4 h-4 text-slate-600" />
               Total Anggaran BOM
             </span>
           </div>
@@ -230,26 +230,26 @@ export function BOMView({ projectId, members = [], isProjectMember }: BOMViewPro
           </div>
         </div>
 
-        {/* 2. Ditolak / Dibatalkan (🔴 Rose) */}
+        {/* 2. Sudah Checkout (Semantic Success Emerald) */}
         <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-card flex flex-col justify-between">
           <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-            <span className="font-semibold flex items-center gap-1.5 text-rose-700">
-              <XCircle className="w-4 h-4 text-rose-600" />
-              Ditolak / Dibatalkan
+            <span className="font-semibold flex items-center gap-1.5 text-emerald-700">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              Sudah Checkout
             </span>
-            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800">
-              {(summary?.by_status.ditolak || 0) + (summary?.by_status.dibatalkan || 0)} Item
+            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+              {summary?.by_status.sudah_checkout || 0} Item
             </span>
           </div>
           <div className="text-xl font-extrabold text-slate-900 tracking-tight">
-            {(summary?.by_status.ditolak || 0) + (summary?.by_status.dibatalkan || 0)} Item
+            {formatIDR(summary?.total_sudah_checkout_cost || 0)}
           </div>
           <div className="text-[11px] text-slate-500 mt-1">
-            {summary?.by_status.ditolak || 0} ditolak, {summary?.by_status.dibatalkan || 0} dibatalkan
+            Telah diproses / dibeli
           </div>
         </div>
 
-        {/* 3. Belum Checkout (🟠 Amber) */}
+        {/* 3. Belum Checkout (Semantic Pending Amber) */}
         <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-card flex flex-col justify-between">
           <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
             <span className="font-semibold flex items-center gap-1.5 text-amber-700">
@@ -268,24 +268,29 @@ export function BOMView({ projectId, members = [], isProjectMember }: BOMViewPro
           </div>
         </div>
 
-        {/* 4. Sudah Checkout (🟢 Emerald) */}
-        <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-card flex flex-col justify-between">
-          <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-            <span className="font-semibold flex items-center gap-1.5 text-emerald-700">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              Sudah Checkout
-            </span>
-            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
-              {summary?.by_status.sudah_checkout || 0} Item
-            </span>
-          </div>
-          <div className="text-xl font-extrabold text-slate-900 tracking-tight">
-            {formatIDR(summary?.total_sudah_checkout_cost || 0)}
-          </div>
-          <div className="text-[11px] text-slate-500 mt-1">
-            Telah diproses / dibeli
-          </div>
-        </div>
+        {/* 4. Ditolak / Dibatalkan (Semantic Danger Rose only if > 0, otherwise neutral slate) */}
+        {(() => {
+          const rejectedCount = (summary?.by_status.ditolak || 0) + (summary?.by_status.dibatalkan || 0);
+          return (
+            <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-card flex flex-col justify-between">
+              <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
+                <span className={`font-semibold flex items-center gap-1.5 ${rejectedCount > 0 ? "text-rose-700" : "text-slate-700"}`}>
+                  <XCircle className={`w-4 h-4 ${rejectedCount > 0 ? "text-rose-600" : "text-slate-500"}`} />
+                  Ditolak / Dibatalkan
+                </span>
+                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${rejectedCount > 0 ? "bg-rose-100 text-rose-800" : "bg-slate-100 text-slate-600"}`}>
+                  {rejectedCount} Item
+                </span>
+              </div>
+              <div className="text-xl font-extrabold text-slate-900 tracking-tight">
+                {rejectedCount} Item
+              </div>
+              <div className="text-[11px] text-slate-500 mt-1">
+                {summary?.by_status.ditolak || 0} ditolak, {summary?.by_status.dibatalkan || 0} dibatalkan
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Toolbar: Search, Filters, CSV, Add Item */}

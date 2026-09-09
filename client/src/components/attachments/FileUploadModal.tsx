@@ -17,8 +17,7 @@ import {
   Tag, 
   Layers,
   Plus,
-  Trash2,
-  Sparkles
+  Trash2
 } from "lucide-react";
 
 interface FileUploadModalProps {
@@ -353,12 +352,12 @@ export function FileUploadModal({
             </div>
 
             {/* Dynamic Progress Bar */}
-            <div className="w-full bg-slate-200 rounded-full h-3 overflow-hidden p-0.5 shadow-inner">
+            <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-200 ${
                   uploadStatus === "ready"
-                    ? "bg-emerald-500 shadow-emerald-500/50"
-                    : "bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500"
+                    ? "bg-emerald-600"
+                    : "bg-blue-600"
                 }`}
                 style={{ width: `${Math.max(uploadProgress, 5)}%` }}
               />

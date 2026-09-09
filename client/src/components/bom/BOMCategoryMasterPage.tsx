@@ -22,7 +22,6 @@ import {
   Layers, 
   Info,
   Package,
-  Sparkles,
   HelpCircle
 } from "lucide-react";
 import { showConfirm, notifySuccess, notifyError } from "../../utils/swal";

@@ -10,7 +10,7 @@ import {
   CheckCircle, 
   Crown,
   UserCheck,
-  Sparkles,
+  GraduationCap,
   Phone,
   MapPin,
   Calendar,
@@ -394,7 +394,7 @@ export function UserFormModal({
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                  <GraduationCap className="w-3.5 h-3.5 text-amber-600" />
                   Magang (Intern)
                 </span>
                 {role === "magang" && <CheckCircle className="w-3.5 h-3.5 text-amber-600" />}
