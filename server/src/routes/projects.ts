@@ -12,6 +12,10 @@ router.get("/", async (c) => {
       SUM(CASE WHEN t.status != 'backlog' AND t.id IS NOT NULL THEN 1 ELSE 0 END) as active_tasks,
       SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END) as completed_tasks,
       SUM(CASE WHEN t.status = 'backlog' THEN 1 ELSE 0 END) as backlog_tasks,
+      SUM(CASE WHEN t.status = 'in_progress' THEN 1 ELSE 0 END) as in_progress_tasks,
+      SUM(CASE WHEN t.status = 'in_review' THEN 1 ELSE 0 END) as in_review_tasks,
+      SUM(CASE WHEN t.status = 'revision' THEN 1 ELSE 0 END) as revision_tasks,
+      SUM(CASE WHEN t.status = 'on_hold' THEN 1 ELSE 0 END) as on_hold_tasks,
       (SELECT COUNT(*) FROM task_acceptance_criteria tac JOIN tasks tk ON tk.id = tac.task_id WHERE tk.project_id = p.id) as total_criteria,
       (SELECT COUNT(*) FROM task_acceptance_criteria tac JOIN tasks tk ON tk.id = tac.task_id WHERE tk.project_id = p.id AND tac.is_completed = 1) as completed_criteria,
       (SELECT COALESCE(SUM(total_price), 0) FROM bill_of_materials WHERE project_id = p.id) as total_bom_cost,
@@ -56,9 +60,24 @@ router.get("/", async (c) => {
     membersByProject[pm.project_id].push(pm);
   }
 
+  // Fetch all project locations
+  const allProjectLocations = await db.query(`
+    SELECT * FROM project_locations ORDER BY name ASC
+  `).all() as any[];
+
+  const locationsByProject: Record<string, any[]> = {};
+  for (const loc of allProjectLocations) {
+    if (!locationsByProject[loc.project_id]) {
+      locationsByProject[loc.project_id] = [];
+    }
+    locationsByProject[loc.project_id].push(loc);
+  }
+
   for (const p of projects) {
     p.members = membersByProject[p.id] || [];
     p.member_count = p.members.length;
+    p.locations = locationsByProject[p.id] || [];
+    p.location_count = p.locations.length;
   }
 
   return c.json(projects);
@@ -74,6 +93,10 @@ router.get("/:id", async (c) => {
       SUM(CASE WHEN t.status != 'backlog' AND t.id IS NOT NULL THEN 1 ELSE 0 END) as active_tasks,
       SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END) as completed_tasks,
       SUM(CASE WHEN t.status = 'backlog' THEN 1 ELSE 0 END) as backlog_tasks,
+      SUM(CASE WHEN t.status = 'in_progress' THEN 1 ELSE 0 END) as in_progress_tasks,
+      SUM(CASE WHEN t.status = 'in_review' THEN 1 ELSE 0 END) as in_review_tasks,
+      SUM(CASE WHEN t.status = 'revision' THEN 1 ELSE 0 END) as revision_tasks,
+      SUM(CASE WHEN t.status = 'on_hold' THEN 1 ELSE 0 END) as on_hold_tasks,
       (SELECT COUNT(*) FROM task_acceptance_criteria tac JOIN tasks tk ON tk.id = tac.task_id WHERE tk.project_id = p.id) as total_criteria,
       (SELECT COUNT(*) FROM task_acceptance_criteria tac JOIN tasks tk ON tk.id = tac.task_id WHERE tk.project_id = p.id AND tac.is_completed = 1) as completed_criteria,
       (SELECT COALESCE(SUM(total_price), 0) FROM bill_of_materials WHERE project_id = p.id) as total_bom_cost,
@@ -106,6 +129,13 @@ router.get("/:id", async (c) => {
   `).all({ id: id }) as any[];
 
   project.members = members;
+
+  // Get project locations
+  let locations = await db.query(`
+    SELECT * FROM project_locations WHERE project_id = :id ORDER BY name ASC
+  `).all({ id: id }) as any[];
+  project.locations = locations;
+  project.location_count = locations.length;
 
   return c.json(project);
 });
@@ -227,11 +257,18 @@ router.put("/:id", async (c) => {
   }
 });
 
-// DELETE /api/projects/:id - Delete project
+// DELETE /api/projects/:id - Delete project and purge associated notifications
 router.delete("/:id", async (c) => {
   const id = c.req.param("id");
-  await db.query("DELETE FROM projects WHERE id = :id").run({ id: id });
-  return c.json({ success: true, message: "Project berhasil dihapus" });
+  try {
+    await db.transaction(async (conn) => {
+      await conn.execute("DELETE FROM notifications WHERE project_id = ?", [id]);
+      await conn.execute("DELETE FROM projects WHERE id = ?", [id]);
+    });
+    return c.json({ success: true, message: "Project berhasil dihapus" });
+  } catch (err: any) {
+    return c.json({ error: err.message || "Gagal menghapus project" }, 500);
+  }
 });
 
 export default router;

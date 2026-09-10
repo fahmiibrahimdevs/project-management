@@ -1,5 +1,6 @@
 import React from "react";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { SearchableSelect } from "./SearchableSelect";
 
 interface PaginationProps {
   currentPage: number;
@@ -62,21 +63,22 @@ export function Pagination({
 
         {onPageSizeChange && (
           <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200">
-            <span className="text-[11px] text-slate-500">Per halaman:</span>
-            <select
-              value={pageSize}
-              onChange={(e) => {
-                onPageSizeChange(Number(e.target.value));
-                onPageChange(1);
-              }}
-              className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-700 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-            >
-              {pageSizeOptions.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
+            <span className="text-[11px] text-slate-500 shrink-0">Per hal:</span>
+            <div className="w-20">
+              <SearchableSelect
+                size="sm"
+                value={String(pageSize)}
+                onChange={(val) => {
+                  onPageSizeChange(Number(val));
+                  onPageChange(1);
+                }}
+                options={pageSizeOptions.map((opt) => ({
+                  value: String(opt),
+                  label: String(opt),
+                }))}
+                minItemsForSearch={8}
+              />
+            </div>
           </div>
         )}
       </div>

@@ -6,6 +6,7 @@ export const SYNC_TABLES = [
   "members",
   "bom_categories",
   "projects",
+  "project_locations",
   "project_members",
   "tasks",
   "task_assignees",

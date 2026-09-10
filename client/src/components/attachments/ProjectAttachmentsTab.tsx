@@ -8,6 +8,7 @@ import {
 import { useAuth } from "../../context/AuthContext";
 import { FilePreviewModal } from "./FilePreviewModal";
 import { FileUploadModal } from "./FileUploadModal";
+import { SearchableSelect } from "../common/SearchableSelect";
 import { Pagination } from "../common/Pagination";
 import { showConfirm, notifySuccess, notifyError } from "../../utils/swal";
 import { useDebounce } from "../../hooks/useDebounce";
@@ -36,11 +37,15 @@ import {
   ArrowUpDown,
   Palette,
   ChevronDown,
+  ChevronUp,
   ChevronRight,
   FoldHorizontal,
   UnfoldHorizontal,
   FolderOpen,
-  Filter
+  Filter,
+  BarChart3,
+  PieChart as PieChartIcon,
+  TrendingUp,
 } from "lucide-react";
 
 interface ProjectAttachmentsTabProps {
@@ -68,8 +73,9 @@ export function ProjectAttachmentsTab({
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebounce(searchQuery, 300);
   const [sortBy, setSortBy] = useState<"newest" | "name" | "size">("newest");
-  const [viewMode, setViewMode] = useState<"table" | "grid">("table"); // Default to Tree Table Group View
+  const [viewMode, setViewMode] = useState<"table" | "grid">("table");
   const [collapsedTasks, setCollapsedTasks] = useState<Record<string, boolean>>({});
+  const [showAnalytics, setShowAnalytics] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -95,6 +101,73 @@ export function ProjectAttachmentsTab({
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
   };
+
+  // Analytics calculations for ProjectAttachmentsTab
+  const attachmentAnalytics = useMemo(() => {
+    const totalFiles = attachments.length;
+    const totalBytes = attachments.reduce((acc, att) => acc + (Number(att.file_size) || 0), 0);
+
+    // Group by category: count & size
+    const catData: Record<string, { label: string; count: number; bytes: number; color: string }> = {
+      document: { label: "Dokumen & PDF", count: 0, bytes: 0, color: "#f43f5e" },
+      cad: { label: "CAD / 3D", count: 0, bytes: 0, color: "#f59e0b" },
+      design: { label: "Desain / Grafis", count: 0, bytes: 0, color: "#a855f7" },
+      image: { label: "Gambar / Foto", count: 0, bytes: 0, color: "#0ea5e9" },
+      spreadsheet: { label: "Spreadsheet & Data", count: 0, bytes: 0, color: "#10b981" },
+      archive: { label: "Arsip (ZIP/RAR)", count: 0, bytes: 0, color: "#64748b" },
+      other: { label: "Lainnya", count: 0, bytes: 0, color: "#94a3b8" },
+    };
+
+    attachments.forEach((att) => {
+      const cat = att.category || "other";
+      if (!catData[cat]) {
+        catData[cat] = { label: cat.toUpperCase(), count: 0, bytes: 0, color: "#94a3b8" };
+      }
+      catData[cat].count += 1;
+      catData[cat].bytes += Number(att.file_size) || 0;
+    });
+
+    const activeCatList = Object.entries(catData)
+      .filter(([_, data]) => data.count > 0)
+      .map(([key, data]) => ({ key, ...data }))
+      .sort((a, b) => b.bytes - a.bytes);
+
+    const circumference = 2 * Math.PI * 56;
+    let accumulatedOffset = 0;
+    const donutSlices = activeCatList.map((cat) => {
+      const percentage = totalBytes > 0 ? (cat.bytes / totalBytes) * 100 : 0;
+      const strokeDasharray = `${(percentage / 100) * circumference} ${circumference}`;
+      const strokeDashoffset = -accumulatedOffset;
+      accumulatedOffset += (percentage / 100) * circumference;
+      return {
+        ...cat,
+        percentage: Math.round(percentage),
+        strokeDasharray,
+        strokeDashoffset,
+      };
+    });
+
+    // Top task file sources
+    const taskFiles: Record<string, { title: string; count: number; bytes: number }> = {};
+    attachments.forEach((att) => {
+      const title = att.task_title || "📁 Pusat Dokumen Proyek";
+      if (!taskFiles[title]) {
+        taskFiles[title] = { title, count: 0, bytes: 0 };
+      }
+      taskFiles[title].count += 1;
+      taskFiles[title].bytes += Number(att.file_size) || 0;
+    });
+
+    const topTasks = Object.values(taskFiles).sort((a, b) => b.bytes - a.bytes).slice(0, 5);
+
+    return {
+      totalFiles,
+      totalBytes,
+      donutSlices,
+      topTasks,
+      activeCatList,
+    };
+  }, [attachments]);
 
   // Filter & Sort attachments
   const filteredAttachments = useMemo(() => {
@@ -351,6 +424,19 @@ export function ProjectAttachmentsTab({
 
   return (
     <div className="space-y-5">
+      {/* Section Header */}
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <div className="w-1.5 h-4 rounded-full bg-blue-600 shrink-0" />
+          <h2 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
+            Pusat Berkas & Dokumen Lampiran
+          </h2>
+        </div>
+        <p className="text-xs text-slate-500 leading-relaxed">
+          Penyimpanan terpusat dokumen pendukung, berkas gambar, CAD 3D, dan spreadsheet yang terlampir pada tugas proyek.
+        </p>
+      </div>
+
       {/* 🌟 Top Metric Cards (7 Highlights) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
         {/* Total Storage Used */}
@@ -518,18 +604,161 @@ export function ProjectAttachmentsTab({
             </button>
           </div>
 
-          {/* Upload Button */}
-          {canUpload && (
+          {/* Action Buttons: Toggle Analytics & Upload */}
+          <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
-              onClick={() => setIsUploadModalOpen(true)}
-              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs transition-colors shrink-0"
+              onClick={() => setShowAnalytics(!showAnalytics)}
+              className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl border transition-all cursor-pointer whitespace-nowrap ${
+                showAnalytics
+                  ? "bg-sky-50 text-sky-700 border-sky-300 shadow-2xs"
+                  : "bg-white text-slate-700 hover:bg-slate-50 border-slate-200/90 shadow-2xs"
+              }`}
+              title="Tampilkan / Sembunyikan visualisasi grafik berkas & kapasitas penyimpanan"
             >
-              <Plus className="w-4 h-4" />
-              <span>+ Unggah Berkas (Max 100MB)</span>
+              <BarChart3 className={`w-3.5 h-3.5 ${showAnalytics ? "text-sky-600" : "text-slate-500"}`} />
+              <span>Grafik Berkas</span>
+              {showAnalytics ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
             </button>
-          )}
+
+            {canUpload && (
+              <button
+                type="button"
+                onClick={() => setIsUploadModalOpen(true)}
+                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 active:bg-sky-800 rounded-xl shadow-xs transition-colors shrink-0 whitespace-nowrap cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Unggah Berkas</span>
+              </button>
+            )}
+          </div>
         </div>
+
+        {/* Collapsible Analytics Charts Panel */}
+        {showAnalytics && (
+          <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-card space-y-5 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-sky-100 rounded-lg text-sky-600">
+                  <BarChart3 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                    Analisis Berkas Lampiran & Kapasitas Penyimpanan
+                  </h4>
+                  <p className="text-[11px] text-slate-600 font-medium">
+                    Proporsi format file, alokasi kapasitas storage proyek, dan sebaran sumber dokumen
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-medium text-slate-600">
+                  Total: <strong className="text-slate-900 font-mono font-bold">{attachmentAnalytics.totalFiles}</strong> Berkas • <strong className="text-slate-900 font-mono font-bold">{formatFileSize(attachmentAnalytics.totalBytes)}</strong>
+                </span>
+              </div>
+            </div>
+
+            {/* Charts Grid: Donut Category Storage & Top Task Files */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
+              {/* 1. Donut Chart Category Storage Breakdown */}
+              <div className="bg-slate-50/90 p-4 rounded-xl border border-slate-200 shadow-2xs flex flex-col justify-between">
+                <div className="text-xs font-bold text-slate-900 mb-3 flex items-center gap-1.5">
+                  <PieChartIcon className="w-3.5 h-3.5 text-sky-600" />
+                  <span>Distribusi Kapasitas Penyimpanan per Kategori</span>
+                </div>
+                
+                {attachmentAnalytics.totalFiles === 0 ? (
+                  <div className="py-8 text-center text-xs text-slate-500 font-medium">Belum ada berkas lampiran yang diunggah</div>
+                ) : (
+                  <div className="flex flex-col sm:flex-row items-center gap-6">
+                    {/* SVG Donut */}
+                    <div className="relative w-32 h-32 shrink-0">
+                      <svg className="w-full h-full -rotate-90" viewBox="0 0 140 140">
+                        <circle
+                          cx="70"
+                          cy="70"
+                          r="56"
+                          fill="transparent"
+                          stroke="#e2e8f0"
+                          strokeWidth="18"
+                        />
+                        {attachmentAnalytics.donutSlices.map((slice) => (
+                          <circle
+                            key={slice.key}
+                            cx="70"
+                            cy="70"
+                            r="56"
+                            fill="transparent"
+                            stroke={slice.color}
+                            strokeWidth="18"
+                            strokeDasharray={slice.strokeDasharray}
+                            strokeDashoffset={slice.strokeDashoffset}
+                            className="transition-all duration-500 ease-out"
+                          />
+                        ))}
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                        <span className="text-sm font-black font-mono text-slate-900 leading-none">
+                          {formatFileSize(attachmentAnalytics.totalBytes)}
+                        </span>
+                        <span className="text-[11px] text-slate-700 font-bold mt-0.5">Total Storage</span>
+                      </div>
+                    </div>
+
+                    {/* Legend */}
+                    <div className="space-y-2 text-xs flex-1 w-full max-h-48 overflow-y-auto no-scrollbar">
+                      {attachmentAnalytics.donutSlices.map((slice) => (
+                        <div key={slice.key} className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: slice.color }} />
+                            <span className="text-slate-800 font-medium truncate text-xs">{slice.label}</span>
+                          </div>
+                          <div className="font-mono text-xs text-slate-900 text-right shrink-0">
+                            <strong>{formatFileSize(slice.bytes)}</strong> <span className="text-slate-600 font-medium text-[11px]">({slice.percentage}%)</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 2. Top Task Storage Breakdown */}
+              <div className="bg-slate-50/90 p-4 rounded-xl border border-slate-200 shadow-2xs flex flex-col justify-between">
+                <div className="text-xs font-bold text-slate-900 mb-3 flex items-center gap-1.5">
+                  <FolderOpen className="w-3.5 h-3.5 text-sky-600" />
+                  <span>Sumber Berkas Terbesar per Task</span>
+                </div>
+
+                {attachmentAnalytics.topTasks.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-slate-500 font-medium">Belum ada tugas dengan lampiran berkas</div>
+                ) : (
+                  <div className="space-y-3 text-xs">
+                    {attachmentAnalytics.topTasks.map((t) => {
+                      const maxBytes = attachmentAnalytics.topTasks[0]?.bytes || 1;
+                      const pct = attachmentAnalytics.totalBytes > 0 ? Math.round((t.bytes / attachmentAnalytics.totalBytes) * 100) : 0;
+                      const barPct = maxBytes > 0 ? Math.round((t.bytes / maxBytes) * 100) : 0;
+                      return (
+                        <div key={t.title} className="space-y-1">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-semibold text-slate-800 truncate">{t.title} ({t.count} file)</span>
+                            <span className="font-mono font-bold text-slate-900">{formatFileSize(t.bytes)} <span className="font-medium text-slate-600 text-[11px]">({pct}%)</span></span>
+                          </div>
+                          <div className="h-2.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-sky-500 transition-all duration-500 rounded-full"
+                              style={{ width: `${barPct}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Toolbar: Search, Task Filter, Sort, Expand/Collapse & View Mode Toggle */}
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -541,36 +770,37 @@ export function ProjectAttachmentsTab({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Cari nama berkas, task, pengunggah..."
-              className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-medium"
+              className="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-slate-200/90 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 font-medium text-slate-900 shadow-2xs transition-colors"
             />
           </div>
 
           <div className="flex items-center gap-2.5 flex-wrap">
             {/* Filter by Task Source */}
-            <div className="flex items-center gap-1.5 text-xs text-slate-600">
-              <Filter className="w-3.5 h-3.5 text-slate-400" />
-              <select
+            <div className="shrink-0 min-w-[190px]">
+              <SearchableSelect
+                size="sm"
                 value={selectedTaskId}
-                onChange={(e) => setSelectedTaskId(e.target.value)}
-                className="px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none font-medium cursor-pointer max-w-[180px] truncate"
-              >
-                <option value="all">Semua Task & Dokumen</option>
-                <option value="project-root">📁 Pusat Dokumen Proyek</option>
-                {tasks.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    📋 Task: {t.title}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => setSelectedTaskId(val)}
+                options={[
+                  { value: "all", label: "Semua Task & Dokumen" },
+                  { value: "project-root", label: "📁 Pusat Dokumen Proyek" },
+                  ...tasks.map((t) => ({
+                    value: t.id,
+                    label: `📋 Task: ${t.title}`,
+                  })),
+                ]}
+                searchPlaceholder="Cari task..."
+                minItemsForSearch={5}
+              />
             </div>
 
             {/* Tree Expand / Collapse All Controls (BOM Style) */}
             {viewMode === "table" && (
-              <div className="flex items-center gap-1 bg-slate-50 p-0.5 rounded-xl border border-slate-200/90">
+              <div className="flex items-center gap-1 bg-white p-0.5 rounded-xl border border-slate-200/90 shadow-2xs">
                 <button
                   type="button"
                   onClick={expandAll}
-                  className="p-1.5 text-slate-600 hover:text-blue-600 hover:bg-white rounded-lg text-xs transition-colors"
+                  className="p-1.5 text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg text-xs transition-colors"
                   title="Buka Semua Group Task"
                 >
                   <UnfoldHorizontal className="w-3.5 h-3.5" />
@@ -578,7 +808,7 @@ export function ProjectAttachmentsTab({
                 <button
                   type="button"
                   onClick={collapseAll}
-                  className="p-1.5 text-slate-600 hover:text-blue-600 hover:bg-white rounded-lg text-xs transition-colors"
+                  className="p-1.5 text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg text-xs transition-colors"
                   title="Tutup Semua Group Task"
                 >
                   <FoldHorizontal className="w-3.5 h-3.5" />
@@ -587,17 +817,18 @@ export function ProjectAttachmentsTab({
             )}
 
             {/* Sort Dropdown */}
-            <div className="flex items-center gap-1.5 text-xs text-slate-600">
-              <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
-              <select
+            <div className="shrink-0 min-w-[140px]">
+              <SearchableSelect
+                size="sm"
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none font-medium cursor-pointer"
-              >
-                <option value="newest">Terbaru</option>
-                <option value="name">Nama (A - Z)</option>
-                <option value="size">Ukuran Terbesar</option>
-              </select>
+                onChange={(val) => setSortBy(val as any)}
+                options={[
+                  { value: "newest", label: "Terbaru" },
+                  { value: "name", label: "Nama (A - Z)" },
+                  { value: "size", label: "Ukuran Terbesar" },
+                ]}
+                minItemsForSearch={8}
+              />
             </div>
 
             {/* View Mode Toggle: Tree Table vs Grid Kartu */}
@@ -682,7 +913,7 @@ export function ProjectAttachmentsTab({
                       {/* Task Group Header Row (Parent Tree Node) */}
                       <tr
                         onClick={() => toggleTaskCollapse(group.groupId)}
-                        className="bg-slate-100/80 hover:bg-slate-200/60 border-y border-slate-200/90 cursor-pointer select-none transition-colors"
+                        className="bg-sky-50/60 hover:bg-sky-100/60 border-y border-sky-200/80 cursor-pointer select-none transition-colors"
                       >
                         <td colSpan={4} className="py-2.5 px-3 sm:px-4">
                           <div className="flex items-center gap-2.5 flex-wrap">

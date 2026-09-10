@@ -136,18 +136,21 @@ router.delete("/categories/:id", async (c) => {
 // 2. BOM Items Endpoints
 // ==========================================
 
-// GET /api/bom?projectId=...&categoryId=...
+// GET /api/bom?projectId=...&categoryId=...&locationId=...
 router.get("/", async (c) => {
   const projectId = c.req.query("projectId");
   const categoryId = c.req.query("categoryId");
+  const locationId = c.req.query("locationId") || c.req.query("location_id");
 
   let query = `
     SELECT 
       b.*,
       COALESCE(c.name, b.category_name, 'LAIN-LAIN') as category_name,
-      COALESCE(c.color, 'slate') as category_color
+      COALESCE(c.color, 'slate') as category_color,
+      loc.name as location_name
     FROM bill_of_materials b
     LEFT JOIN bom_categories c ON b.category_id = c.id
+    LEFT JOIN project_locations loc ON loc.id = b.location_id
     WHERE 1=1
   `;
   const params: any = {};
@@ -163,6 +166,15 @@ router.get("/", async (c) => {
     } else {
       query += " AND b.category_id = :categoryId";
       params.categoryId = categoryId;
+    }
+  }
+
+  if (locationId && locationId !== "all") {
+    if (locationId === "none" || locationId === "unassigned") {
+      query += " AND (b.location_id IS NULL OR b.location_id = '')";
+    } else {
+      query += " AND b.location_id = :locationId";
+      params.locationId = locationId;
     }
   }
 
@@ -229,6 +241,7 @@ router.post("/", async (c) => {
   const id = "bom-" + crypto.randomUUID().slice(0, 8);
   const {
     project_id,
+    location_id = null,
     item_name,
     category_id,
     store_name = "",
@@ -266,16 +279,17 @@ router.post("/", async (c) => {
   try {
     await db.query(`
       INSERT INTO bill_of_materials (
-        id, project_id, category_id, category_name, 
+        id, project_id, location_id, category_id, category_name, 
         item_name, store_name, quantity, unit_price, total_price, priority, status, purchase_url, notes
       )
       VALUES (
-        :id, :project_id, :category_id, :category_name,
+        :id, :project_id, :location_id, :category_id, :category_name,
         :item_name, :store_name, :quantity, :unit_price, :total_price, :priority, :status, :purchase_url, :notes
       )
     `).run({
       id: id,
       project_id: project_id,
+      location_id: location_id || null,
       category_id: catId,
       category_name: catName,
       item_name: item_name.trim(),
@@ -293,9 +307,11 @@ router.post("/", async (c) => {
       SELECT 
         b.*,
         COALESCE(c.name, b.category_name, 'LAIN-LAIN') as category_name,
-        COALESCE(c.color, 'slate') as category_color
+        COALESCE(c.color, 'slate') as category_color,
+        loc.name as location_name
       FROM bill_of_materials b
       LEFT JOIN bom_categories c ON b.category_id = c.id
+      LEFT JOIN project_locations loc ON loc.id = b.location_id
       WHERE b.id = :id
     `).get({ id: id });
 
@@ -311,6 +327,7 @@ router.put("/:id", async (c) => {
   const body = await c.req.json();
   const {
     item_name,
+    location_id,
     category_id,
     store_name,
     quantity,
@@ -342,6 +359,7 @@ router.put("/:id", async (c) => {
       UPDATE bill_of_materials
       SET 
         item_name = COALESCE(:item_name, item_name),
+        location_id = CASE WHEN :loc_provided = 1 THEN :location_id ELSE location_id END,
         category_id = CASE WHEN :cat_provided = 1 THEN :category_id ELSE category_id END,
         category_name = CASE WHEN :cat_provided = 1 THEN :category_name ELSE category_name END,
         store_name = CASE WHEN :store_name_provided = 1 THEN :store_name ELSE store_name END,
@@ -357,6 +375,8 @@ router.put("/:id", async (c) => {
     `).run({
       id: id,
       item_name: item_name ? item_name.trim() : null,
+      location_id: location_id || null,
+      loc_provided: location_id !== undefined ? 1 : 0,
       category_id: catId || null,
       category_name: catName || "LAIN-LAIN",
       cat_provided: category_id !== undefined ? 1 : 0,
@@ -377,9 +397,11 @@ router.put("/:id", async (c) => {
       SELECT 
         b.*,
         COALESCE(c.name, b.category_name, 'LAIN-LAIN') as category_name,
-        COALESCE(c.color, 'slate') as category_color
+        COALESCE(c.color, 'slate') as category_color,
+        loc.name as location_name
       FROM bill_of_materials b
       LEFT JOIN bom_categories c ON b.category_id = c.id
+      LEFT JOIN project_locations loc ON loc.id = b.location_id
       WHERE b.id = :id
     `).get({ id: id });
 

@@ -69,9 +69,8 @@ export function MultiAssigneePicker({
     <div className="space-y-2.5 p-3.5 bg-slate-50/90 rounded-2xl border border-slate-200/90">
       {/* Header with Selected Counter & Quick Actions */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-          <Users className="w-4 h-4 text-blue-600" />
-          <span>{label}</span>
+        <label className="text-xs font-bold text-slate-900">
+          {label}
         </label>
 
         <div className="flex items-center gap-2">

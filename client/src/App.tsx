@@ -17,6 +17,7 @@ import { BOMModal } from "./components/bom/BOMModal";
 import { IssueLogView } from "./components/issues/IssueLogView";
 import { ProjectModal } from "./components/project/ProjectModal";
 import { ProjectPersonnelModal } from "./components/project/ProjectPersonnelModal";
+import { ProjectLocationManagerModal } from "./components/project/ProjectLocationManagerModal";
 import { ProjectTeamTab } from "./components/project/ProjectTeamTab";
 import { ProjectAttachmentsTab } from "./components/attachments/ProjectAttachmentsTab";
 import { BOMCategoryMasterPage } from "./components/bom/BOMCategoryMasterPage";
@@ -126,6 +127,7 @@ function MainAppContent() {
   const [isCreateIssueOpen, setIsCreateIssueOpen] = useState(false);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isPersonnelModalOpen, setIsPersonnelModalOpen] = useState(false);
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
   const [isAccountSecurityOpen, setIsAccountSecurityOpen] = useState(false);
 
@@ -365,6 +367,7 @@ function MainAppContent() {
               canEditProject={canEditProject}
               onTabChange={setActiveTab}
               onEditProject={handleOpenEditProject}
+              onOpenLocationManager={() => setIsLocationModalOpen(true)}
               onBackToGlobal={() => {
                 setIsTeamView(false);
                 setIsGlobalView(true);
@@ -385,6 +388,7 @@ function MainAppContent() {
 
             {activeTab === "list" && (
               <TaskListView
+                projectId={activeProject.id}
                 tasks={tasks}
                 members={projectMembers}
                 isProjectMember={isProjectMember}
@@ -507,6 +511,17 @@ function MainAppContent() {
           project={activeProject}
           allMembers={allMembers}
           onClose={() => setIsPersonnelModalOpen(false)}
+        />
+      )}
+
+      {/* Dynamic Project Location Manager Modal */}
+      {activeProject && (
+        <ProjectLocationManagerModal
+          isOpen={isLocationModalOpen}
+          projectId={activeProject.id}
+          projectName={activeProject.name}
+          canManage={canEditProject}
+          onClose={() => setIsLocationModalOpen(false)}
         />
       )}
 

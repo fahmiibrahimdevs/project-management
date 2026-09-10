@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Modal } from "../common/Modal";
+import { SearchableSelect } from "../common/SearchableSelect";
 import { Project, Member } from "../../types";
 import { useCreateProject, useUpdateProject } from "../../api/client";
 import { Layers, Calendar, Tag, FileText } from "lucide-react";
@@ -99,10 +100,8 @@ export function ProjectModal({
         {/* Name & Code */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="sm:col-span-2 space-y-1.5">
-            <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-              <Layers className="w-3.5 h-3.5 text-blue-600" />
-              <span>Nama Proyek</span>
-              <span className="text-rose-500">*</span>
+            <label className="text-xs font-bold text-slate-800">
+              Nama Proyek <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
@@ -110,15 +109,13 @@ export function ProjectModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Contoh: Sistem Konveyor Otomatis Warehouse"
-              className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="w-full text-xs bg-white border border-slate-200/90 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-slate-900 shadow-2xs transition-colors"
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-              <Tag className="w-3.5 h-3.5 text-blue-600" />
-              <span>Kode Proyek</span>
-              <span className="text-rose-500">*</span>
+            <label className="text-xs font-bold text-slate-800">
+              Kode Proyek <span className="text-rose-500">*</span>
             </label>
             <input
               type="text"
@@ -126,23 +123,22 @@ export function ProjectModal({
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
               placeholder="Contoh: PRJ-CVY-01"
-              className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-mono uppercase"
+              className="w-full text-xs bg-white border border-slate-200/90 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 uppercase font-semibold text-slate-800 shadow-2xs transition-colors"
             />
           </div>
         </div>
 
         {/* Description */}
         <div className="space-y-1.5">
-          <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-            <FileText className="w-3.5 h-3.5 text-blue-600" />
-            <span>Deskripsi & Ruang Lingkup Proyek</span>
+          <label className="text-xs font-bold text-slate-800">
+            Deskripsi & Ruang Lingkup Proyek
           </label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
             placeholder="Jelaskan ruang lingkup, sasaran teknis, dan target pencapaian proyek ini..."
-            className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            className="w-full text-xs bg-white border border-slate-200/90 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-slate-900 shadow-2xs transition-colors"
           />
         </div>
 
@@ -150,41 +146,57 @@ export function ProjectModal({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-slate-800">Status Proyek</label>
-            <select
+            <SearchableSelect
               value={status}
-              onChange={(e) => setStatus(e.target.value as any)}
-              className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-semibold"
-            >
-              <option value="planning">Planning (Perencanaan)</option>
-              <option value="active">Active (Sedang Berjalan)</option>
-              <option value="on_hold">On Hold (Ditunda)</option>
-              <option value="completed">Completed (Selesai)</option>
-            </select>
+              onChange={(val) => setStatus(val as any)}
+              options={[
+                {
+                  value: "planning",
+                  label: "Planning (Perencanaan)",
+                  badge: <span className="text-[10px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-bold">Planning</span>,
+                },
+                {
+                  value: "active",
+                  label: "Active (Sedang Berjalan)",
+                  badge: <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold">Active</span>,
+                },
+                {
+                  value: "on_hold",
+                  label: "On Hold (Ditunda)",
+                  badge: <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold">On Hold</span>,
+                },
+                {
+                  value: "completed",
+                  label: "Completed (Selesai)",
+                  badge: <span className="text-[10px] bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded font-bold">Done</span>,
+                },
+              ]}
+              placeholder="-- Pilih Status --"
+              minItemsForSearch={6}
+            />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-slate-500" />
-              <span>Tanggal Mulai</span>
+            <label className="text-xs font-bold text-slate-800">
+              Tanggal Mulai
             </label>
             <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="w-full text-xs bg-white border border-slate-200/90 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 font-medium text-slate-800 cursor-pointer shadow-2xs transition-colors"
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-slate-500" />
-              <span>Target Selesai</span>
+            <label className="text-xs font-bold text-slate-800">
+              Target Selesai
             </label>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="w-full text-xs bg-white border border-slate-200/90 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 font-medium text-slate-800 cursor-pointer shadow-2xs transition-colors"
             />
           </div>
         </div>

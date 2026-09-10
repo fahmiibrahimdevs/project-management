@@ -10,6 +10,7 @@ import {
   IssueLog,
   ProjectAttachmentsResponse,
   ProjectAttachment,
+  ProjectLocation,
   NotificationItem,
   NotificationsResponse,
 } from "../types";
@@ -119,12 +120,77 @@ export function useCreateMember() {
   });
 }
 
-// ================= TASKS =================
-export function useTasks(projectId?: string) {
-  return useQuery<Task[]>({
-    queryKey: ["tasks", { projectId }],
+// ================= LOCATIONS =================
+export function useProjectLocations(projectId?: string) {
+  return useQuery<ProjectLocation[]>({
+    queryKey: ["locations", { projectId }],
     queryFn: () =>
-      fetchJson<Task[]>(projectId ? `/api/tasks?projectId=${projectId}` : "/api/tasks"),
+      fetchJson<ProjectLocation[]>(projectId ? `/api/locations?projectId=${projectId}` : "/api/locations"),
+    enabled: !!projectId,
+  });
+}
+
+export function useCreateProjectLocation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Partial<ProjectLocation>) =>
+      fetchJson<ProjectLocation>("/api/locations", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["locations", { projectId: variables.project_id }] });
+      queryClient.invalidateQueries({ queryKey: ["locations"] });
+    },
+  });
+}
+
+export function useUpdateProjectLocation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, projectId, data }: { id: string; projectId: string; data: Partial<ProjectLocation> }) =>
+      fetchJson<ProjectLocation>(`/api/locations/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["locations", { projectId: variables.projectId }] });
+      queryClient.invalidateQueries({ queryKey: ["locations"] });
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["bom"] });
+      queryClient.invalidateQueries({ queryKey: ["issue-logs"] });
+    },
+  });
+}
+
+export function useDeleteProjectLocation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, projectId }: { id: string; projectId: string }) =>
+      fetchJson<{ success: boolean }>(`/api/locations/${id}`, {
+        method: "DELETE",
+      }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["locations", { projectId: variables.projectId }] });
+      queryClient.invalidateQueries({ queryKey: ["locations"] });
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["bom"] });
+      queryClient.invalidateQueries({ queryKey: ["issue-logs"] });
+    },
+  });
+}
+
+// ================= TASKS =================
+export function useTasks(projectId?: string, locationId?: string) {
+  return useQuery<Task[]>({
+    queryKey: ["tasks", { projectId, locationId }],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (projectId) params.append("projectId", projectId);
+      if (locationId && locationId !== "all") params.append("locationId", locationId);
+      const qs = params.toString();
+      return fetchJson<Task[]>(qs ? `/api/tasks?${qs}` : "/api/tasks");
+    },
     enabled: !!projectId,
   });
 }
@@ -227,15 +293,17 @@ export function useToggleCriteria() {
       criteriaId,
       is_completed,
       completed_by_id,
+      cancelled_by_id,
     }: {
       taskId: string;
       criteriaId: string;
       is_completed: boolean;
       completed_by_id?: string | null;
+      cancelled_by_id?: string | null;
     }) =>
       fetchJson(`/api/tasks/${taskId}/criteria/${criteriaId}`, {
         method: "PUT",
-        body: JSON.stringify({ is_completed, completed_by_id }),
+        body: JSON.stringify({ is_completed, completed_by_id, cancelled_by_id }),
       }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["tasks", "detail", variables.taskId] });
@@ -382,13 +450,14 @@ export async function uploadFile(file: File) {
 }
 
 // ================= BOM (BILL OF MATERIALS) =================
-export function useBOM(projectId?: string, categoryId?: string) {
+export function useBOM(projectId?: string, categoryId?: string, locationId?: string) {
   return useQuery<BOMResponse>({
-    queryKey: ["bom", { projectId, categoryId }],
+    queryKey: ["bom", { projectId, categoryId, locationId }],
     queryFn: () => {
       const params = new URLSearchParams();
       if (projectId) params.append("projectId", projectId);
       if (categoryId && categoryId !== "all") params.append("categoryId", categoryId);
+      if (locationId && locationId !== "all") params.append("locationId", locationId);
       const queryString = params.toString();
       return fetchJson<BOMResponse>(queryString ? `/api/bom?${queryString}` : "/api/bom");
     },
@@ -497,11 +566,16 @@ export function useDeleteBOMItem() {
 }
 
 // ================= ISSUE LOGS =================
-export function useIssueLogs(projectId?: string) {
+export function useIssueLogs(projectId?: string, locationId?: string) {
   return useQuery<IssueLogsResponse>({
-    queryKey: ["issue-logs", { projectId }],
-    queryFn: () =>
-      fetchJson<IssueLogsResponse>(projectId ? `/api/issue-logs?projectId=${projectId}` : "/api/issue-logs"),
+    queryKey: ["issue-logs", { projectId, locationId }],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (projectId) params.append("projectId", projectId);
+      if (locationId && locationId !== "all") params.append("locationId", locationId);
+      const qs = params.toString();
+      return fetchJson<IssueLogsResponse>(qs ? `/api/issue-logs?${qs}` : "/api/issue-logs");
+    },
     enabled: !!projectId,
   });
 }

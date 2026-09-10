@@ -3,9 +3,10 @@ import { db } from "../db/database";
 
 const router = new Hono();
 
-// GET /api/issue-logs?projectId=...
+// GET /api/issue-logs?projectId=...&locationId=...
 router.get("/", async (c) => {
   const projectId = c.req.query("projectId");
+  const locationId = c.req.query("locationId") || c.req.query("location_id");
 
   let query = `
     SELECT 
@@ -15,16 +16,28 @@ router.get("/", async (c) => {
       m.role as reported_by_role,
       m.avatar_color as reported_by_avatar_color,
       t.title as task_title,
-      t.status as task_status
+      t.status as task_status,
+      loc.name as location_name
     FROM issue_logs i
     LEFT JOIN members m ON m.id = i.reported_by_id
     LEFT JOIN tasks t ON t.id = i.task_id
+    LEFT JOIN project_locations loc ON loc.id = i.location_id
+    WHERE 1=1
   `;
 
   const params: any = {};
   if (projectId) {
-    query += " WHERE i.project_id = :projectId";
+    query += " AND i.project_id = :projectId";
     params.projectId = projectId;
+  }
+
+  if (locationId && locationId !== "all") {
+    if (locationId === "none" || locationId === "unassigned") {
+      query += " AND (i.location_id IS NULL OR i.location_id = '')";
+    } else {
+      query += " AND i.location_id = :locationId";
+      params.locationId = locationId;
+    }
   }
 
   query += ` ORDER BY 
@@ -88,11 +101,13 @@ router.get("/:id", async (c) => {
       t.title as task_title,
       t.status as task_status,
       p.name as project_name,
-      p.code as project_code
+      p.code as project_code,
+      loc.name as location_name
     FROM issue_logs i
     LEFT JOIN members m ON m.id = i.reported_by_id
     LEFT JOIN tasks t ON t.id = i.task_id
     LEFT JOIN projects p ON p.id = i.project_id
+    LEFT JOIN project_locations loc ON loc.id = i.location_id
     WHERE i.id = :id
   `).get({ id: id });
 
@@ -109,6 +124,7 @@ router.post("/", async (c) => {
   const id = "iss-" + crypto.randomUUID().slice(0, 8);
   const {
     project_id,
+    location_id = null,
     task_id = null,
     log_date,
     problem,
@@ -128,11 +144,12 @@ router.post("/", async (c) => {
 
   try {
     await db.query(`
-      INSERT INTO issue_logs (id, project_id, task_id, log_date, problem, indication, root_cause, solution, status, severity, reported_by_id)
-      VALUES (:id, :project_id, :task_id, :log_date, :problem, :indication, :root_cause, :solution, :status, :severity, :reported_by_id)
+      INSERT INTO issue_logs (id, project_id, location_id, task_id, log_date, problem, indication, root_cause, solution, status, severity, reported_by_id)
+      VALUES (:id, :project_id, :location_id, :task_id, :log_date, :problem, :indication, :root_cause, :solution, :status, :severity, :reported_by_id)
     `).run({
       id: id,
       project_id: project_id,
+      location_id: location_id || null,
       task_id: task_id || null,
       log_date: log_date,
       problem: problem,
@@ -151,10 +168,12 @@ router.post("/", async (c) => {
         m.email as reported_by_email,
         m.role as reported_by_role,
         m.avatar_color as reported_by_avatar_color,
-        t.title as task_title
+        t.title as task_title,
+        loc.name as location_name
       FROM issue_logs i
       LEFT JOIN members m ON m.id = i.reported_by_id
       LEFT JOIN tasks t ON t.id = i.task_id
+      LEFT JOIN project_locations loc ON loc.id = i.location_id
       WHERE i.id = :id
     `).get({ id: id });
 
@@ -169,6 +188,7 @@ router.put("/:id", async (c) => {
   const id = c.req.param("id");
   const body = await c.req.json();
   const {
+    location_id,
     task_id,
     log_date,
     problem,
@@ -184,6 +204,7 @@ router.put("/:id", async (c) => {
     await db.query(`
       UPDATE issue_logs
       SET 
+        location_id = CASE WHEN :loc_provided = 1 THEN :location_id ELSE location_id END,
         task_id = CASE WHEN :task_id_provided = 1 THEN :task_id ELSE task_id END,
         log_date = COALESCE(:log_date, log_date),
         problem = COALESCE(:problem, problem),
@@ -197,6 +218,8 @@ router.put("/:id", async (c) => {
       WHERE id = :id
     `).run({
       id: id,
+      location_id: location_id || null,
+      loc_provided: location_id !== undefined ? 1 : 0,
       task_id: task_id,
       task_id_provided: task_id !== undefined ? 1 : 0,
       log_date: log_date,
@@ -216,10 +239,12 @@ router.put("/:id", async (c) => {
         m.email as reported_by_email,
         m.role as reported_by_role,
         m.avatar_color as reported_by_avatar_color,
-        t.title as task_title
+        t.title as task_title,
+        loc.name as location_name
       FROM issue_logs i
       LEFT JOIN members m ON m.id = i.reported_by_id
       LEFT JOIN tasks t ON t.id = i.task_id
+      LEFT JOIN project_locations loc ON loc.id = i.location_id
       WHERE i.id = :id
     `).get({ id: id });
 

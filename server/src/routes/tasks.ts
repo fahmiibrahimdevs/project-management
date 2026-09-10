@@ -42,13 +42,35 @@ async function attachAssigneesToTasks(tasks: any[]) {
   }));
 }
 
-// GET /api/tasks?projectId=...
+// Helper to decode simulated Bearer token
+async function getUserFromToken(authHeader?: string) {
+  if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
+  const token = authHeader.replace("Bearer ", "").trim();
+  try {
+    const decoded = JSON.parse(Buffer.from(token, "base64").toString("utf-8"));
+    if (decoded && decoded.id) {
+      const user = (await db.query(`
+        SELECT id, name, email, role, job_title, avatar_color, is_active 
+        FROM members 
+        WHERE id = :id AND is_active = 1
+      `).get({ id: decoded.id })) as any;
+      return user || null;
+    }
+  } catch {
+    // If not base64 JSON, return null
+  }
+  return null;
+}
+
+// GET /api/tasks?projectId=...&locationId=...
 router.get("/", async (c) => {
   const projectId = c.req.query("projectId");
+  const locationId = c.req.query("locationId") || c.req.query("location_id");
 
   let query = `
     SELECT 
       t.*,
+      loc.name as location_name,
       creator.name as created_by_name,
       creator.role as created_by_role,
       creator.job_title as created_by_job_title,
@@ -59,12 +81,23 @@ router.get("/", async (c) => {
       (SELECT COUNT(*) FROM task_attachments WHERE task_id = t.id) as total_attachments
     FROM tasks t
     LEFT JOIN members creator ON creator.id = t.created_by_id
+    LEFT JOIN project_locations loc ON loc.id = t.location_id
+    WHERE 1=1
   `;
 
   const params: any = {};
   if (projectId) {
-    query += " WHERE t.project_id = :projectId";
+    query += " AND t.project_id = :projectId";
     params.projectId = projectId;
+  }
+
+  if (locationId && locationId !== "all") {
+    if (locationId === "none" || locationId === "unassigned") {
+      query += " AND (t.location_id IS NULL OR t.location_id = '')";
+    } else {
+      query += " AND t.location_id = :locationId";
+      params.locationId = locationId;
+    }
   }
 
   query += ` ORDER BY 
@@ -93,6 +126,7 @@ router.get("/:id", async (c) => {
   const task = await db.query(`
     SELECT 
       t.*,
+      loc.name as location_name,
       creator.name as created_by_name,
       creator.role as created_by_role,
       creator.job_title as created_by_job_title,
@@ -102,6 +136,7 @@ router.get("/:id", async (c) => {
     FROM tasks t
     LEFT JOIN members creator ON creator.id = t.created_by_id
     LEFT JOIN projects p ON p.id = t.project_id
+    LEFT JOIN project_locations loc ON loc.id = t.location_id
     WHERE t.id = :id
   `).get({ id: id }) as any;
 
@@ -117,11 +152,15 @@ router.get("/:id", async (c) => {
     WHERE ta.task_id = :id
   `).all({ id: id });
 
-  // Fetch criteria with completed_by info
+  // Fetch criteria with completed_by and cancelled_by info
   task.acceptance_criteria = await db.query(`
-    SELECT tac.*, m.name as completed_by_name
+    SELECT 
+      tac.*, 
+      m.name as completed_by_name,
+      m_canc.name as cancelled_by_name
     FROM task_acceptance_criteria tac
     LEFT JOIN members m ON m.id = tac.completed_by_id
+    LEFT JOIN members m_canc ON m_canc.id = tac.cancelled_by_id
     WHERE tac.task_id = :id 
     ORDER BY tac.order_index ASC, tac.created_at ASC
   `).all({ id: id });
@@ -156,6 +195,7 @@ router.post("/", async (c) => {
   const id = "tsk-" + crypto.randomUUID().slice(0, 8);
   const {
     project_id,
+    location_id = null,
     title,
     description = "",
     status = "backlog",
@@ -180,11 +220,12 @@ router.post("/", async (c) => {
 
   try {
     await db.query(`
-      INSERT INTO tasks (id, project_id, title, description, status, priority, deadline, order_index, created_by_id)
-      VALUES (:id, :project_id, :title, :description, :status, :priority, :deadline, :order_index, :created_by_id)
+      INSERT INTO tasks (id, project_id, location_id, title, description, status, priority, deadline, order_index, created_by_id)
+      VALUES (:id, :project_id, :location_id, :title, :description, :status, :priority, :deadline, :order_index, :created_by_id)
     `).run({
       id: id,
       project_id: project_id,
+      location_id: location_id || null,
       title: title.trim(),
       description: description.trim(),
       status: status,
@@ -272,7 +313,7 @@ router.post("/", async (c) => {
 router.put("/:id", async (c) => {
   const id = c.req.param("id");
   const body = await c.req.json();
-  const { title, description, status, priority, assignee_ids, deadline, order_index } = body;
+  const { title, description, status, priority, location_id, assignee_ids, deadline, order_index } = body;
 
   try {
     await db.query(`
@@ -282,6 +323,7 @@ router.put("/:id", async (c) => {
         description = COALESCE(:description, description),
         status = COALESCE(:status, status),
         priority = COALESCE(:priority, priority),
+        location_id = CASE WHEN :location_provided = 1 THEN :location_id ELSE location_id END,
         deadline = CASE WHEN :deadline_provided = 1 THEN :deadline ELSE deadline END,
         order_index = COALESCE(:order_index, order_index),
         updated_at = NOW()
@@ -292,6 +334,8 @@ router.put("/:id", async (c) => {
       description: description !== undefined ? description : null,
       status: status,
       priority: priority,
+      location_id: location_id || null,
+      location_provided: location_id !== undefined ? 1 : 0,
       deadline: deadline,
       deadline_provided: deadline !== undefined ? 1 : 0,
       order_index: order_index,
@@ -341,13 +385,23 @@ router.put("/:id", async (c) => {
       }
     }
 
-    const updated = await db.query("SELECT * FROM tasks WHERE id = :id").get({ id: id }) as any;
-    updated.assignees = await db.query(`
-      SELECT m.id, m.name, m.email, m.role, m.job_title, m.avatar_color
-      FROM task_assignees ta
-      JOIN members m ON m.id = ta.member_id
-      WHERE ta.task_id = :id
-    `).all({ id: id });
+    const updated = await db.query(`
+      SELECT 
+        t.*,
+        loc.name as location_name
+      FROM tasks t
+      LEFT JOIN project_locations loc ON loc.id = t.location_id
+      WHERE t.id = :id
+    `).get({ id: id }) as any;
+
+    if (updated) {
+      updated.assignees = await db.query(`
+        SELECT m.id, m.name, m.email, m.role, m.job_title, m.avatar_color
+        FROM task_assignees ta
+        JOIN members m ON m.id = ta.member_id
+        WHERE ta.task_id = :id
+      `).all({ id: id });
+    }
 
     return c.json(updated);
   } catch (err: any) {
@@ -355,7 +409,7 @@ router.put("/:id", async (c) => {
   }
 });
 
-// POST /api/tasks/reorder - Batch update order and status for Kanban Drag & Drop
+// POST /api/tasks/reorder - Batch update order and status for Kanban Drag & Drop (Transaction-Safe)
 router.post("/reorder", async (c) => {
   const body = await c.req.json();
   const { items } = body as { items: Array<{ id: string; status: string; order_index: number }> };
@@ -365,28 +419,32 @@ router.post("/reorder", async (c) => {
   }
 
   try {
-    for (const item of items) {
-      await db.query(`
-        UPDATE tasks 
-        SET status = :status, order_index = :order_index, updated_at = NOW() 
-        WHERE id = :id
-      `).run({
-        id: item.id,
-        status: item.status,
-        order_index: item.order_index,
-      });
-    }
+    await db.transaction(async (conn) => {
+      for (const item of items) {
+        await conn.execute(
+          "UPDATE tasks SET status = ?, order_index = ?, updated_at = NOW() WHERE id = ?",
+          [item.status, item.order_index, item.id]
+        );
+      }
+    });
     return c.json({ success: true, count: items.length });
   } catch (err: any) {
     return c.json({ error: err.message || "Gagal memperbarui urutan task" }, 500);
   }
 });
 
-// DELETE /api/tasks/:id - Delete task
+// DELETE /api/tasks/:id - Delete task and clean up associated notifications
 router.delete("/:id", async (c) => {
   const id = c.req.param("id");
-  await db.query("DELETE FROM tasks WHERE id = :id").run({ id: id });
-  return c.json({ success: true, message: "Task berhasil dihapus" });
+  try {
+    await db.transaction(async (conn) => {
+      await conn.execute("DELETE FROM notifications WHERE task_id = ?", [id]);
+      await conn.execute("DELETE FROM tasks WHERE id = ?", [id]);
+    });
+    return c.json({ success: true, message: "Task berhasil dihapus" });
+  } catch (err: any) {
+    return c.json({ error: err.message || "Gagal menghapus task" }, 500);
+  }
 });
 
 // --- ACCEPTANCE CRITERIA ENDPOINTS ---
@@ -422,11 +480,33 @@ router.post("/:id/criteria", async (c) => {
   return c.json(created, 201);
 });
 
-// PUT /api/tasks/:id/criteria/:criteriaId - Toggle or edit criterion
+// PUT /api/tasks/:id/criteria/:criteriaId - Toggle or edit criterion with Accidental Uncheck Protection
 router.put("/:id/criteria/:criteriaId", async (c) => {
   const criteriaId = c.req.param("criteriaId");
   const body = await c.req.json();
-  const { text, is_completed, completed_by_id } = body;
+  const { text, is_completed, completed_by_id, cancelled_by_id } = body;
+
+  const current = (await db.query("SELECT * FROM task_acceptance_criteria WHERE id = :id").get({ id: criteriaId })) as any;
+  if (!current) {
+    return c.json({ error: "Kriteria tidak ditemukan" }, 404);
+  }
+
+  const authHeader = c.req.header("Authorization");
+  const callerUser = await getUserFromToken(authHeader);
+  const callerUserId = callerUser ? callerUser.id : null;
+
+  // 🛡️ ACCIDENTAL UNCHECK & AUTHORIZATION BACKEND PROTECTION:
+  // If criterion is currently completed (1) and caller attempts to uncheck (0 or false)
+  if (current.is_completed === 1 && is_completed !== undefined && (is_completed === false || is_completed === 0)) {
+    const isSuperUser = callerUser && (callerUser.role === "owner" || callerUser.role === "pm");
+    const isOriginalCompleter = callerUser && current.completed_by_id && callerUser.id === current.completed_by_id;
+
+    if (!isSuperUser && !isOriginalCompleter) {
+      return c.json({
+        error: "Akses Dibatasi: Kriteria ini telah diselesaikan oleh personil lain. Hanya penyelesai atau PM/Owner yang berhak membatalkannya.",
+      }, 403);
+    }
+  }
 
   const isCompletedNum = is_completed ? 1 : 0;
   // Format local date time: YYYY-MM-DD HH:mm:ss
@@ -435,7 +515,9 @@ router.put("/:id/criteria/:criteriaId", async (c) => {
   const nowFormatted = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
   
   const completedAtVal = is_completed ? nowFormatted : null;
-  const completedByIdVal = is_completed ? completed_by_id : null;
+  const completedByIdVal = is_completed ? (completed_by_id || callerUserId) : null;
+  const cancelledAtVal = (is_completed === false || is_completed === 0) ? nowFormatted : null;
+  const cancelledByIdVal = (is_completed === false || is_completed === 0) ? (cancelled_by_id || callerUserId) : null;
 
   await db.query(`
     UPDATE task_acceptance_criteria
@@ -443,21 +525,29 @@ router.put("/:id/criteria/:criteriaId", async (c) => {
       text = COALESCE(:text, text),
       is_completed = CASE WHEN :is_completed_provided = 1 THEN :is_completed ELSE is_completed END,
       completed_by_id = CASE WHEN :is_completed_provided = 1 THEN :completed_by_id ELSE completed_by_id END,
-      completed_at = CASE WHEN :is_completed_provided = 1 THEN :completed_at ELSE completed_at END
+      completed_at = CASE WHEN :is_completed_provided = 1 THEN :completed_at ELSE completed_at END,
+      cancelled_by_id = CASE WHEN :is_completed_provided = 1 THEN :cancelled_by_id ELSE cancelled_by_id END,
+      cancelled_at = CASE WHEN :is_completed_provided = 1 THEN :cancelled_at ELSE cancelled_at END
     WHERE id = :criteriaId
   `).run({
     criteriaId: criteriaId,
-    text: text,
+    text: text !== undefined ? text.trim() : null,
     is_completed: isCompletedNum,
     is_completed_provided: is_completed !== undefined ? 1 : 0,
     completed_by_id: completedByIdVal,
     completed_at: completedAtVal,
+    cancelled_by_id: cancelledByIdVal,
+    cancelled_at: cancelledAtVal,
   });
 
   const updated = await db.query(`
-    SELECT tac.*, m.name as completed_by_name 
+    SELECT 
+      tac.*, 
+      m.name as completed_by_name,
+      m_canc.name as cancelled_by_name
     FROM task_acceptance_criteria tac
     LEFT JOIN members m ON m.id = tac.completed_by_id
+    LEFT JOIN members m_canc ON m_canc.id = tac.cancelled_by_id
     WHERE tac.id = :id
   `).get({ id: criteriaId });
 
@@ -473,7 +563,7 @@ router.delete("/:id/criteria/:criteriaId", async (c) => {
 
 // --- COMMENTS ENDPOINTS ---
 
-// POST /api/tasks/:id/comments - Add comment
+// POST /api/tasks/:id/comments - Add comment & notify with comment_id reference
 router.post("/:id/comments", async (c) => {
   const taskId = c.req.param("id");
   const body = await c.req.json();
@@ -562,14 +652,15 @@ router.post("/:id/comments", async (c) => {
       for (const targetUserId of recipientIds) {
         const notifId = "ntf-" + crypto.randomUUID().slice(0, 8);
         await db.query(`
-          INSERT INTO notifications (id, user_id, actor_id, project_id, task_id, type, title, message, is_read)
-          VALUES (:id, :userId, :actorId, :projectId, :taskId, 'task_comment', :title, :message, 0)
+          INSERT INTO notifications (id, user_id, actor_id, project_id, task_id, comment_id, type, title, message, is_read)
+          VALUES (:id, :userId, :actorId, :projectId, :taskId, :commentId, 'task_comment', :title, :message, 0)
         `).run({
           id: notifId,
           userId: targetUserId,
           actorId: member_id || "",
           projectId: task.project_id,
           taskId: task.id,
+          commentId: id,
           title: notifTitle,
           message: notifMessage,
         });
@@ -582,11 +673,18 @@ router.post("/:id/comments", async (c) => {
   return c.json(created, 201);
 });
 
-// DELETE /api/tasks/:id/comments/:commentId - Delete comment
+// DELETE /api/tasks/:id/comments/:commentId - Delete comment and purge corresponding notifications
 router.delete("/:id/comments/:commentId", async (c) => {
   const commentId = c.req.param("commentId");
-  await db.query("DELETE FROM task_comments WHERE id = :id").run({ id: commentId });
-  return c.json({ success: true });
+  try {
+    await db.transaction(async (conn) => {
+      await conn.execute("DELETE FROM notifications WHERE comment_id = ?", [commentId]);
+      await conn.execute("DELETE FROM task_comments WHERE id = ?", [commentId]);
+    });
+    return c.json({ success: true, message: "Komentar dan notifikasi berhasil dihapus" });
+  } catch (err: any) {
+    return c.json({ error: err.message || "Gagal menghapus komentar" }, 500);
+  }
 });
 
 // --- ATTACHMENTS ENDPOINTS ---

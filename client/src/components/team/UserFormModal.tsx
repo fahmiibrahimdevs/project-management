@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Modal } from "../common/Modal";
+import { SearchableSelect } from "../common/SearchableSelect";
 import { User, UserRole } from "../../types";
 import { 
   UserPlus, 
@@ -154,7 +155,7 @@ export function UserFormModal({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Contoh: Rian Pratama"
-                className="w-full pl-9 pr-3 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-200/90 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-slate-900 shadow-2xs transition-colors"
               />
             </div>
           </div>
@@ -171,7 +172,7 @@ export function UserFormModal({
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="nama@fsi.com"
-                className="w-full pl-9 pr-3 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-200/90 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-slate-900 shadow-2xs transition-colors"
               />
             </div>
           </div>
@@ -190,7 +191,7 @@ export function UserFormModal({
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={userToEdit ? "Kosongkan jika tidak diubah" : "Default: 1"}
-                className="w-full pl-9 pr-3 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-200/90 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-slate-900 shadow-2xs transition-colors"
               />
             </div>
             {!userToEdit && (
@@ -200,14 +201,16 @@ export function UserFormModal({
 
           <div className="space-y-1">
             <label className="text-xs font-semibold text-slate-700">Jenis Kelamin</label>
-            <select
+            <SearchableSelect
               value={gender}
-              onChange={(e) => setGender(e.target.value)}
-              className="w-full py-2.5 px-3 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-            >
-              <option value="Laki-laki">Laki-laki</option>
-              <option value="Perempuan">Perempuan</option>
-            </select>
+              onChange={(val) => setGender(val)}
+              options={[
+                { value: "Laki-laki", label: "Laki-laki" },
+                { value: "Perempuan", label: "Perempuan" },
+              ]}
+              placeholder="-- Pilih Jenis Kelamin --"
+              minItemsForSearch={5}
+            />
           </div>
         </div>
 
@@ -225,7 +228,7 @@ export function UserFormModal({
                 value={jobTitle}
                 onChange={(e) => setJobTitle(e.target.value)}
                 placeholder="Contoh: Hardware Engineer"
-                className="w-full pl-9 pr-3 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-200/90 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-slate-900 shadow-2xs transition-colors"
               />
             </div>
           </div>
@@ -241,7 +244,7 @@ export function UserFormModal({
                 value={department}
                 onChange={(e) => setDepartment(e.target.value)}
                 placeholder="Contoh: Robotics & AI"
-                className="w-full pl-9 pr-3 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-200/90 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-slate-900 shadow-2xs transition-colors"
               />
             </div>
           </div>
@@ -260,7 +263,7 @@ export function UserFormModal({
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="0812-xxxx-xxxx"
-                className="w-full pl-9 pr-3 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-200/90 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-slate-900 shadow-2xs transition-colors"
               />
             </div>
           </div>
@@ -275,7 +278,7 @@ export function UserFormModal({
                 type="date"
                 value={joinDate}
                 onChange={(e) => setJoinDate(e.target.value)}
-                className="w-full pl-9 pr-3 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-200/90 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-slate-900 shadow-2xs transition-colors"
               />
             </div>
           </div>
@@ -290,7 +293,7 @@ export function UserFormModal({
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full pl-9 pr-3 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                className="w-full pl-9 pr-3 py-2.5 text-xs bg-white border border-slate-200/90 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-slate-900 shadow-2xs transition-colors"
               />
             </div>
           </div>
@@ -308,16 +311,15 @@ export function UserFormModal({
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               placeholder="Alamat lengkap domisili anggota..."
-              className="w-full pl-9 pr-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none"
+              className="w-full pl-9 pr-3.5 py-2 text-xs bg-white border border-slate-200/90 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-slate-900 resize-none shadow-2xs transition-colors"
             />
           </div>
         </div>
 
         {/* Role Selection with RBAC Description */}
         <div className="space-y-1.5 pt-1">
-          <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-            <Shield className="w-3.5 h-3.5 text-blue-600" />
-            <span>Pilih Hak Akses (Role RBAC)</span>
+          <label className="text-xs font-semibold text-slate-700">
+            Pilih Hak Akses (Role RBAC)
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             {/* 1. Owner */}

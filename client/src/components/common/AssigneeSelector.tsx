@@ -91,10 +91,9 @@ export function AssigneeSelector({
     <div className="space-y-2">
       {/* Header & Counter */}
       <div className="flex items-center justify-between">
-        <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-          <Users className="w-4 h-4 text-blue-600" />
+        <label className="text-xs font-bold text-slate-800 flex items-center gap-2">
           <span>{label}</span>
-          <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">
+          <span className="text-[11px] font-bold text-sky-700 bg-sky-50 px-2.5 py-0.5 rounded-full border border-sky-200">
             {selectedIds.length} personil ditugaskan
           </span>
         </label>

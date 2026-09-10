@@ -428,7 +428,7 @@ export function RichTextEditor({
                   value={linkText}
                   onChange={(e) => setLinkText(e.target.value)}
                   placeholder="Contoh: Skema Wiring Diagram atau Datasheet"
-                  className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className="w-full text-xs bg-white border border-slate-200/90 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-slate-900 shadow-2xs transition-colors"
                 />
               </div>
 
@@ -443,7 +443,7 @@ export function RichTextEditor({
                   value={linkUrl}
                   onChange={(e) => setLinkUrl(e.target.value)}
                   placeholder="https://example.com/file atau drive.google.com"
-                  className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className="w-full text-xs bg-white border border-slate-200/90 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-slate-900 shadow-2xs transition-colors"
                 />
               </div>
 

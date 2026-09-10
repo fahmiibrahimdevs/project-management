@@ -1,9 +1,9 @@
 /*M!999999\- enable the sandbox mode */ 
--- MariaDB dump 10.19  Distrib 10.11.14-MariaDB, for debian-linux-gnu (x86_64)
+-- MariaDB dump 10.19-11.8.6-MariaDB, for debian-linux-gnu (x86_64)
 --
 -- Host: 127.0.0.1    Database: protrack_db
 -- ------------------------------------------------------
--- Server version	10.11.14-MariaDB-0ubuntu0.24.04.1
+-- Server version	11.8.6-MariaDB-5ubuntu0.1 from Ubuntu
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -14,7 +14,7 @@
 /*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
 /*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
-/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+/*M!100616 SET @OLD_NOTE_VERBOSITY=@@NOTE_VERBOSITY, NOTE_VERBOSITY=0 */;
 
 --
 -- Table structure for table `bill_of_materials`
@@ -39,9 +39,11 @@ CREATE TABLE `bill_of_materials` (
   `notes` text DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `location_id` varchar(64) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `project_id` (`project_id`),
   KEY `category_id` (`category_id`),
+  KEY `idx_bom_location` (`location_id`),
   CONSTRAINT `bill_of_materials_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE,
   CONSTRAINT `bill_of_materials_ibfk_2` FOREIGN KEY (`category_id`) REFERENCES `bom_categories` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -87,10 +89,12 @@ CREATE TABLE `issue_logs` (
   `reported_by_id` varchar(64) NOT NULL,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `location_id` varchar(64) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `project_id` (`project_id`),
   KEY `task_id` (`task_id`),
   KEY `reported_by_id` (`reported_by_id`),
+  KEY `idx_issues_location` (`location_id`),
   CONSTRAINT `issue_logs_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE,
   CONSTRAINT `issue_logs_ibfk_2` FOREIGN KEY (`task_id`) REFERENCES `tasks` (`id`) ON DELETE SET NULL,
   CONSTRAINT `issue_logs_ibfk_3` FOREIGN KEY (`reported_by_id`) REFERENCES `members` (`id`) ON DELETE CASCADE
@@ -126,6 +130,32 @@ CREATE TABLE `members` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `notifications`
+--
+
+DROP TABLE IF EXISTS `notifications`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `notifications` (
+  `id` varchar(50) NOT NULL,
+  `user_id` varchar(50) NOT NULL,
+  `actor_id` varchar(50) NOT NULL,
+  `project_id` varchar(50) NOT NULL,
+  `task_id` varchar(50) DEFAULT NULL,
+  `type` varchar(50) DEFAULT 'task_comment',
+  `title` varchar(255) NOT NULL,
+  `message` text NOT NULL,
+  `is_read` tinyint(1) DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `comment_id` varchar(64) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_user_read` (`user_id`,`is_read`),
+  KEY `idx_created` (`created_at`),
+  KEY `idx_notifications_comment` (`comment_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `project_attachments`
 --
 
@@ -150,6 +180,27 @@ CREATE TABLE `project_attachments` (
   CONSTRAINT `project_attachments_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE,
   CONSTRAINT `project_attachments_ibfk_2` FOREIGN KEY (`task_id`) REFERENCES `tasks` (`id`) ON DELETE SET NULL,
   CONSTRAINT `project_attachments_ibfk_3` FOREIGN KEY (`uploaded_by_id`) REFERENCES `members` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `project_locations`
+--
+
+DROP TABLE IF EXISTS `project_locations`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `project_locations` (
+  `id` varchar(64) NOT NULL,
+  `project_id` varchar(64) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `description` text DEFAULT NULL,
+  `address` text DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_project_id` (`project_id`),
+  CONSTRAINT `fk_project_locations_project` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -208,13 +259,17 @@ CREATE TABLE `task_acceptance_criteria` (
   `is_completed` tinyint(4) NOT NULL DEFAULT 0,
   `completed_by_id` varchar(64) DEFAULT NULL,
   `completed_at` varchar(64) DEFAULT NULL,
+  `cancelled_by_id` varchar(64) DEFAULT NULL,
+  `cancelled_at` varchar(64) DEFAULT NULL,
   `order_index` int(11) NOT NULL DEFAULT 0,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   KEY `task_id` (`task_id`),
   KEY `completed_by_id` (`completed_by_id`),
+  KEY `idx_tac_cancelled_by` (`cancelled_by_id`),
   CONSTRAINT `task_acceptance_criteria_ibfk_1` FOREIGN KEY (`task_id`) REFERENCES `tasks` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `task_acceptance_criteria_ibfk_2` FOREIGN KEY (`completed_by_id`) REFERENCES `members` (`id`) ON DELETE SET NULL
+  CONSTRAINT `task_acceptance_criteria_ibfk_2` FOREIGN KEY (`completed_by_id`) REFERENCES `members` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `task_acceptance_criteria_ibfk_3` FOREIGN KEY (`cancelled_by_id`) REFERENCES `members` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -297,9 +352,11 @@ CREATE TABLE `tasks` (
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `assignee_id` varchar(64) DEFAULT NULL,
   `created_by_id` varchar(64) DEFAULT NULL,
+  `location_id` varchar(64) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `project_id` (`project_id`),
   KEY `fk_tasks_created_by` (`created_by_id`),
+  KEY `idx_tasks_location` (`location_id`),
   CONSTRAINT `fk_tasks_created_by` FOREIGN KEY (`created_by_id`) REFERENCES `members` (`id`) ON DELETE SET NULL,
   CONSTRAINT `tasks_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -312,6 +369,6 @@ CREATE TABLE `tasks` (
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
-/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+/*M!100616 SET NOTE_VERBOSITY=@OLD_NOTE_VERBOSITY */;
 
--- Dump completed on 2026-09-03 10:52:47
+-- Dump completed on 2026-09-09 15:37:12

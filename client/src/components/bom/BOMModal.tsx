@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Modal } from "../common/Modal";
 import { BOMItem, BOMStatus, BOMPriority } from "../../types";
-import { useCreateBOMItem, useUpdateBOMItem, useBOMCategories } from "../../api/client";
+import { useCreateBOMItem, useUpdateBOMItem, useBOMCategories, useProjectLocations } from "../../api/client";
 import { useAuth } from "../../context/AuthContext";
 import { SearchableSelect } from "../common/SearchableSelect";
 import { 
@@ -17,7 +17,8 @@ import {
   Link2,
   Store,
   Lock,
-  Tags
+  Tags,
+  MapPin,
 } from "lucide-react";
 import { getCategoryBadgeClass } from "./BOMCategoryMasterPage";
 
@@ -36,9 +37,11 @@ export function BOMModal({
 }: BOMModalProps) {
   const { isSuperUser } = useAuth();
   const { data: categories = [] } = useBOMCategories(projectId);
+  const { data: locations = [] } = useProjectLocations(projectId);
 
   const [itemName, setItemName] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [locationId, setLocationId] = useState("");
   const [storeName, setStoreName] = useState("");
   const [quantity, setQuantity] = useState<number>(1);
   const [unitPrice, setUnitPrice] = useState<number>(0);
@@ -54,6 +57,7 @@ export function BOMModal({
     if (itemToEdit) {
       setItemName(itemToEdit.item_name);
       setCategoryId(itemToEdit.category_id || "");
+      setLocationId(itemToEdit.location_id || "");
       setStoreName(itemToEdit.store_name || "");
       setQuantity(itemToEdit.quantity);
       setUnitPrice(itemToEdit.unit_price);
@@ -64,6 +68,7 @@ export function BOMModal({
     } else {
       setItemName("");
       setCategoryId(categories.length > 0 ? categories[0].id : "");
+      setLocationId("");
       setStoreName("");
       setQuantity(1);
       setUnitPrice(0);
@@ -98,6 +103,7 @@ export function BOMModal({
           data: {
             item_name: itemName.trim(),
             category_id: categoryId || undefined,
+            location_id: locationId ? locationId : null,
             store_name: storeName.trim() || undefined,
             quantity: numericQty,
             unit_price: numericPrice,
@@ -117,6 +123,7 @@ export function BOMModal({
           project_id: projectId,
           item_name: itemName.trim(),
           category_id: categoryId || undefined,
+          location_id: locationId || undefined,
           store_name: storeName.trim() || undefined,
           quantity: numericQty,
           unit_price: numericPrice,
@@ -144,9 +151,8 @@ export function BOMModal({
         {/* 1. Kategori & Nama Barang */}
         <div className="grid grid-cols-1 sm:grid-cols-12 gap-3.5">
           <div className="space-y-1.5 sm:col-span-5">
-            <label className="text-xs font-bold text-slate-800 flex items-center gap-1">
-              <Tags className="w-3.5 h-3.5 text-blue-600" />
-              <span>Kategori BOM</span>
+            <label className="text-xs font-bold text-slate-800">
+              Kategori BOM
             </label>
             <SearchableSelect
               options={categories.map((cat) => ({
@@ -172,25 +178,48 @@ export function BOMModal({
               value={itemName}
               onChange={(e) => setItemName(e.target.value)}
               placeholder="Contoh: ESP32 DevKit V1 / Sensor DHT22"
-              className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-3 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium"
+              className="w-full text-xs bg-white border border-slate-200/90 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 font-medium shadow-2xs transition-colors"
             />
           </div>
         </div>
 
         {/* 2. Toko / Supplier */}
         <div className="space-y-1.5">
-          <label className="text-xs font-bold text-slate-800 flex items-center gap-1">
-            <Store className="w-3.5 h-3.5 text-slate-500" />
-            <span>Nama Toko / Supplier</span>
+          <label className="text-xs font-bold text-slate-800">
+            Nama Toko / Supplier
           </label>
           <input
             type="text"
             value={storeName}
             onChange={(e) => setStoreName(e.target.value)}
             placeholder="Contoh: Tokopedia Official / Slamtec / Jaya Elektronik"
-            className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-3 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-medium"
+            className="w-full text-xs bg-white border border-slate-200/90 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 font-medium shadow-2xs transition-colors"
           />
         </div>
+
+        {/* Dynamic Project Location */}
+        {locations.length > 0 && (
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-800">
+              Lokasi Penempatan / Penggunaan (Opsional)
+            </label>
+            <SearchableSelect
+              value={locationId}
+              onChange={(val) => setLocationId(val)}
+              options={[
+                { value: "", label: "-- Seluruh Proyek / Tanpa Lokasi Khusus --" },
+                ...locations.map((loc) => ({
+                  value: loc.id,
+                  label: `📍 ${loc.name}`,
+                  sublabel: loc.address || undefined,
+                })),
+              ]}
+              placeholder="-- Pilih Lokasi --"
+              searchPlaceholder="Cari lokasi..."
+              minItemsForSearch={4}
+            />
+          </div>
+        )}
 
         {/* 2. Qty & Harga Satuan */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -206,7 +235,7 @@ export function BOMModal({
               value={quantity || ""}
               onChange={(e) => setQuantity(parseFloat(e.target.value) || 0)}
               placeholder="Jumlah unit (misal: 2)"
-              className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-3 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="w-full text-xs bg-white border border-slate-200/90 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 shadow-2xs transition-colors"
             />
           </div>
 
@@ -221,7 +250,7 @@ export function BOMModal({
               value={unitPrice || ""}
               onChange={(e) => setUnitPrice(parseFloat(e.target.value) || 0)}
               placeholder="Contoh: 3500000"
-              className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-3 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="w-full text-xs bg-white border border-slate-200/90 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 shadow-2xs transition-colors"
             />
           </div>
         </div>
@@ -363,9 +392,8 @@ export function BOMModal({
         {/* 5. Link Pembelian */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-bold text-slate-800 flex items-center gap-1">
-              <Link2 className="w-3.5 h-3.5 text-blue-600" />
-              <span>Link Pembelian (URL Toko / Supplier)</span>
+            <label className="text-xs font-bold text-slate-800">
+              Link Pembelian (URL Toko / Supplier)
             </label>
             {purchaseUrl && (
               <a
@@ -384,7 +412,7 @@ export function BOMModal({
             value={purchaseUrl}
             onChange={(e) => setPurchaseUrl(e.target.value)}
             placeholder="https://www.tokopedia.com/... atau https://shopee.co.id/..."
-            className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-3 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            className="w-full text-xs bg-white border border-slate-200/90 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 shadow-2xs transition-colors"
           />
         </div>
 
@@ -396,7 +424,7 @@ export function BOMModal({
             onChange={(e) => setNotes(e.target.value)}
             rows={2}
             placeholder="Catatan garansi, spesifikasi teknis, atau nomor resi..."
-            className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            className="w-full text-xs bg-white border border-slate-200/90 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 shadow-2xs transition-colors"
           />
         </div>
 

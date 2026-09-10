@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Modal } from "../common/Modal";
+import { SearchableSelect } from "../common/SearchableSelect";
 import { Avatar } from "../common/Avatar";
 import { useAuth } from "../../context/AuthContext";
 import { useUpdateProfile } from "../../api/auth";
@@ -339,21 +340,23 @@ export function AccountSecurityModal({
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Nama Lengkap"
-                    className="w-full pl-9 pr-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    className="w-full pl-9 pr-3.5 py-2.5 text-xs bg-white border border-slate-200/90 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-slate-900 shadow-2xs transition-colors"
                   />
                 </div>
               </div>
 
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-slate-700">Jenis Kelamin</label>
-                <select
+                <SearchableSelect
                   value={gender}
-                  onChange={(e) => setGender(e.target.value)}
-                  className="w-full py-2.5 px-3 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                >
-                  <option value="Laki-laki">Laki-laki</option>
-                  <option value="Perempuan">Perempuan</option>
-                </select>
+                  onChange={(val) => setGender(val)}
+                  options={[
+                    { value: "Laki-laki", label: "Laki-laki" },
+                    { value: "Perempuan", label: "Perempuan" },
+                  ]}
+                  placeholder="-- Pilih Jenis Kelamin --"
+                  minItemsForSearch={5}
+                />
               </div>
             </div>
 
@@ -371,7 +374,7 @@ export function AccountSecurityModal({
                     value={jobTitle}
                     onChange={(e) => setJobTitle(e.target.value)}
                     placeholder="Contoh: Lead Automation Engineer"
-                    className="w-full pl-9 pr-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    className="w-full pl-9 pr-3.5 py-2.5 text-xs bg-white border border-slate-200/90 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-slate-900 shadow-2xs transition-colors"
                   />
                 </div>
               </div>
@@ -387,7 +390,7 @@ export function AccountSecurityModal({
                     value={department}
                     onChange={(e) => setDepartment(e.target.value)}
                     placeholder="Contoh: Engineering & Robotics"
-                    className="w-full pl-9 pr-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    className="w-full pl-9 pr-3.5 py-2.5 text-xs bg-white border border-slate-200/90 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-slate-900 shadow-2xs transition-colors"
                   />
                 </div>
               </div>
@@ -406,7 +409,7 @@ export function AccountSecurityModal({
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="0812-xxxx-xxxx"
-                    className="w-full pl-9 pr-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    className="w-full pl-9 pr-3.5 py-2.5 text-xs bg-white border border-slate-200/90 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-slate-900 shadow-2xs transition-colors"
                   />
                 </div>
               </div>
@@ -421,7 +424,7 @@ export function AccountSecurityModal({
                     type="date"
                     value={joinDate}
                     onChange={(e) => setJoinDate(e.target.value)}
-                    className="w-full pl-9 pr-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    className="w-full pl-9 pr-3.5 py-2.5 text-xs bg-white border border-slate-200/90 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-slate-900 shadow-2xs transition-colors"
                   />
                 </div>
               </div>
@@ -436,7 +439,7 @@ export function AccountSecurityModal({
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full pl-9 pr-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    className="w-full pl-9 pr-3.5 py-2.5 text-xs bg-white border border-slate-200/90 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-slate-900 shadow-2xs transition-colors"
                   />
                 </div>
               </div>
@@ -454,7 +457,7 @@ export function AccountSecurityModal({
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   placeholder="Alamat lengkap domisili saat ini..."
-                  className="w-full pl-9 pr-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none"
+                  className="w-full pl-9 pr-3.5 py-2 text-xs bg-white border border-slate-200/90 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-slate-900 resize-none shadow-2xs transition-colors"
                 />
               </div>
             </div>
@@ -512,7 +515,7 @@ export function AccountSecurityModal({
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   placeholder="Masukkan password saat ini (Default: 1)"
-                  className="w-full pl-9 pr-10 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  className="w-full pl-9 pr-10 py-2.5 text-xs bg-white border border-slate-200/90 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-slate-900 shadow-2xs transition-colors"
                 />
                 <button
                   type="button"
@@ -538,7 +541,7 @@ export function AccountSecurityModal({
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Password baru"
-                    className="w-full pl-9 pr-10 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    className="w-full pl-9 pr-10 py-2.5 text-xs bg-white border border-slate-200/90 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-slate-900 shadow-2xs transition-colors"
                   />
                   <button
                     type="button"
@@ -562,7 +565,7 @@ export function AccountSecurityModal({
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Ulangi password baru"
-                    className="w-full pl-9 pr-10 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    className="w-full pl-9 pr-10 py-2.5 text-xs bg-white border border-slate-200/90 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-slate-900 shadow-2xs transition-colors"
                   />
                   <button
                     type="button"

@@ -8,6 +8,7 @@ interface ModalProps {
   subtitle?: string;
   children: React.ReactNode;
   sidePanel?: React.ReactNode;
+  sidePanelPosition?: "left" | "right";
   maxWidth?: "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "5xl" | "6xl" | "full";
 }
 
@@ -18,6 +19,7 @@ export function Modal({
   subtitle,
   children,
   sidePanel,
+  sidePanelPosition = "right",
   maxWidth = "2xl",
 }: ModalProps) {
   useEffect(() => {
@@ -61,6 +63,16 @@ export function Modal({
 
       {/* Modal Dialog & Companion Side Floating Window Container */}
       <div className="relative z-10 flex flex-col lg:flex-row items-center lg:items-start justify-center gap-4 w-full max-w-7xl my-auto">
+        {/* Companion Floating Window (Left Position) */}
+        {sidePanel && sidePanelPosition === "left" && (
+          <div
+            className="w-full lg:w-[390px] bg-white rounded-3xl shadow-2xl border border-slate-200/90 flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in slide-in-from-left-4 duration-200 shrink-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {sidePanel}
+          </div>
+        )}
+
         {/* Main Modal Card */}
         <div
           className={`relative w-full ${maxWidthClasses} bg-white rounded-3xl shadow-2xl border border-slate-200/90 overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-150 shrink`}
@@ -85,8 +97,8 @@ export function Modal({
           <div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
         </div>
 
-        {/* Companion Floating Window (Side Card docked to the right of modal!) */}
-        {sidePanel && (
+        {/* Companion Floating Window (Right Position) */}
+        {sidePanel && sidePanelPosition === "right" && (
           <div
             className="w-full lg:w-[390px] bg-white rounded-3xl shadow-2xl border border-slate-200/90 flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in slide-in-from-right-4 duration-200 shrink-0"
             onClick={(e) => e.stopPropagation()}

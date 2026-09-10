@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Modal } from "../common/Modal";
 import { TaskStatus, TaskPriority, Member } from "../../types";
-import { useCreateTask } from "../../api/client";
+import { useCreateTask, useProjectLocations } from "../../api/client";
 import { useAuth } from "../../context/AuthContext";
 import { AssigneeSelector } from "../common/AssigneeSelector";
+import { SearchableSelect } from "../common/SearchableSelect";
 import { AssigneeSidePanel } from "../common/AssigneeSidePanel";
 import { Avatar } from "../common/Avatar";
 import { notifySuccess } from "../../utils/swal";
@@ -14,7 +15,8 @@ import {
   CheckSquare, 
   FileText, 
   Clock, 
-  UserCheck 
+  UserCheck,
+  MapPin
 } from "lucide-react";
 
 interface TaskCreateModalProps {
@@ -40,8 +42,10 @@ export function TaskCreateModal({
   const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>([]);
   const [deadline, setDeadline] = useState("");
   const [criteriaList, setCriteriaList] = useState<string[]>([""]);
+  const [selectedLocationId, setSelectedLocationId] = useState<string>("");
   const [isAssigneePickerOpen, setIsAssigneePickerOpen] = useState(false);
 
+  const { data: locations = [] } = useProjectLocations(projectId);
   const createTaskMutation = useCreateTask();
 
   useEffect(() => {
@@ -53,6 +57,7 @@ export function TaskCreateModal({
       // If Owner/PM (SuperUser), start unassigned. If Karyawan/Magang, automatically assign to self!
       setSelectedAssigneeIds(isSuperUser ? [] : user?.id ? [user.id] : []);
       setDeadline("");
+      setSelectedLocationId("");
       setCriteriaList([""]);
       setIsAssigneePickerOpen(false);
     }
@@ -89,6 +94,7 @@ export function TaskCreateModal({
     createTaskMutation.mutate(
       {
         project_id: projectId,
+        location_id: selectedLocationId || undefined,
         title: title.trim(),
         description: description.trim(),
         status,
@@ -137,7 +143,7 @@ export function TaskCreateModal({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Contoh: Kalibrasi Sensor Lidar & Testing SLAM Mapping"
-            className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-3 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+            className="w-full text-xs bg-white border border-slate-200/90 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 shadow-2xs transition-colors"
           />
         </div>
 
@@ -149,7 +155,7 @@ export function TaskCreateModal({
             onChange={(e) => setDescription(e.target.value)}
             rows={2}
             placeholder="Tuliskan spesifikasi atau instruksi teknis tugas..."
-            className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            className="w-full text-xs bg-white border border-slate-200/90 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 shadow-2xs transition-colors"
           />
         </div>
 
@@ -157,34 +163,76 @@ export function TaskCreateModal({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="space-y-1">
             <label className="text-xs font-bold text-slate-800">Status Awal</label>
-            <select
+            <SearchableSelect
               value={status}
-              onChange={(e) => setStatus(e.target.value as TaskStatus)}
-              title="Pilih status awal tugas saat pertama dibuat"
-              className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
-            >
-              <option value="backlog">Perencanaan</option>
-              <option value="in_progress">Sedang Dikerjakan</option>
-              <option value="in_review">Dalam Peninjauan</option>
-              <option value="revision">Perlu Revisi</option>
-              <option value="completed">Selesai</option>
-              <option value="on_hold">Ditunda</option>
-            </select>
+              onChange={(val) => setStatus(val as TaskStatus)}
+              options={[
+                {
+                  value: "backlog",
+                  label: "Perencanaan",
+                  badge: <span className="text-[10px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-bold">Backlog</span>,
+                },
+                {
+                  value: "in_progress",
+                  label: "Sedang Dikerjakan",
+                  badge: <span className="text-[10px] bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded font-bold">Progress</span>,
+                },
+                {
+                  value: "in_review",
+                  label: "Dalam Peninjauan",
+                  badge: <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold">Review</span>,
+                },
+                {
+                  value: "revision",
+                  label: "Perlu Revisi",
+                  badge: <span className="text-[10px] bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded font-bold">Revisi</span>,
+                },
+                {
+                  value: "completed",
+                  label: "Selesai",
+                  badge: <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold">Selesai</span>,
+                },
+                {
+                  value: "on_hold",
+                  label: "Ditunda",
+                  badge: <span className="text-[10px] bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded font-bold">Ditunda</span>,
+                },
+              ]}
+              placeholder="-- Pilih Status --"
+              minItemsForSearch={8}
+            />
           </div>
 
           <div className="space-y-1">
             <label className="text-xs font-bold text-slate-800">Tingkat Prioritas</label>
-            <select
+            <SearchableSelect
               value={priority}
-              onChange={(e) => setPriority(e.target.value as TaskPriority)}
-              title="Tentukan tingkat prioritas pengerjaan tugas"
-              className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
-            >
-              <option value="low">Prioritas: Rendah</option>
-              <option value="medium">Prioritas: Sedang</option>
-              <option value="high">Prioritas: Tinggi</option>
-              <option value="urgent">Prioritas: Mendesak</option>
-            </select>
+              onChange={(val) => setPriority(val as TaskPriority)}
+              options={[
+                {
+                  value: "low",
+                  label: "Prioritas: Rendah",
+                  badge: <span className="text-[10px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-bold">Rendah</span>,
+                },
+                {
+                  value: "medium",
+                  label: "Prioritas: Sedang",
+                  badge: <span className="text-[10px] bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded font-bold">Sedang</span>,
+                },
+                {
+                  value: "high",
+                  label: "Prioritas: Tinggi",
+                  badge: <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold">Tinggi</span>,
+                },
+                {
+                  value: "urgent",
+                  label: "Prioritas: Mendesak",
+                  badge: <span className="text-[10px] bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded font-bold">Mendesak</span>,
+                },
+              ]}
+              placeholder="-- Pilih Prioritas --"
+              minItemsForSearch={8}
+            />
           </div>
 
           <div className="space-y-1">
@@ -193,10 +241,34 @@ export function TaskCreateModal({
               type="date"
               value={deadline}
               onChange={(e) => setDeadline(e.target.value)}
-              className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="w-full text-xs bg-white border border-slate-200/90 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 shadow-2xs transition-colors"
             />
           </div>
         </div>
+
+        {/* Dynamic Project Location Selection */}
+        {locations.length > 0 && (
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-slate-800">
+              Lokasi Pelaksanaan (Opsional)
+            </label>
+            <SearchableSelect
+              value={selectedLocationId}
+              onChange={(val) => setSelectedLocationId(val)}
+              options={[
+                { value: "", label: "-- Seluruh Proyek / Tanpa Lokasi Spesifik --" },
+                ...locations.map((loc) => ({
+                  value: loc.id,
+                  label: `📍 ${loc.name}`,
+                  sublabel: loc.address || undefined,
+                })),
+              ]}
+              placeholder="-- Pilih Lokasi --"
+              searchPlaceholder="Cari lokasi..."
+              minItemsForSearch={4}
+            />
+          </div>
+        )}
 
         {/* Assignee Selection (Superuser can pick anyone; Karyawan/Magang is automatically self-assigned) */}
         {isSuperUser ? (
@@ -213,9 +285,8 @@ export function TaskCreateModal({
         ) : (
           <div className="p-4 bg-slate-50/90 rounded-2xl border border-slate-200/90 space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                <UserCheck className="w-3.5 h-3.5 text-blue-600" />
-                <span>Pelaksana Tugas (Assignee)</span>
+              <label className="text-xs font-bold text-slate-800">
+                Pelaksana Tugas (Assignee)
               </label>
               <span className="text-[10px] font-semibold text-blue-700 bg-blue-100/70 px-2 py-0.5 rounded-md">
                 Otomatis Ditugaskan ke Diri Sendiri
@@ -238,9 +309,8 @@ export function TaskCreateModal({
         {/* Acceptance Criteria */}
         <div className="space-y-2 pt-1">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-              <CheckSquare className="w-3.5 h-3.5 text-blue-600" />
-              <span>Acceptance Criteria (Checklist Kriteria Selesai)</span>
+            <label className="text-xs font-bold text-slate-800">
+              Acceptance Criteria (Checklist Kriteria Selesai)
             </label>
             <button
               type="button"
@@ -260,7 +330,7 @@ export function TaskCreateModal({
                   value={crit}
                   onChange={(e) => handleCriteriaChange(idx, e.target.value)}
                   placeholder={`Kriteria ${idx + 1}...`}
-                  className="flex-1 text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className="flex-1 text-xs bg-white border border-slate-200/90 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 shadow-2xs transition-colors"
                 />
                 <button
                   type="button"

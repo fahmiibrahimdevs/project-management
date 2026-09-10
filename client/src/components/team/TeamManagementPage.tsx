@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { User, UserRole } from "../../types";
 import { Avatar } from "../common/Avatar";
+import { SearchableSelect } from "../common/SearchableSelect";
 import { useUsers, useRegisterUser, useUpdateUser, useDeleteUser } from "../../api/auth";
 import { useAuth } from "../../context/AuthContext";
 import { UserFormModal } from "./UserFormModal";
@@ -329,7 +330,19 @@ export function TeamManagementPage({ onBackToGlobal }: TeamManagementPageProps) 
         </div>
       </div>
 
-      {/* 3. Search & Filter Bar */}
+      {/* 3. Section Header & Search/Filter Toolbar */}
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <div className="w-1.5 h-4 rounded-full bg-blue-600 shrink-0" />
+          <h2 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
+            Daftar & Direktori Anggota Tim
+          </h2>
+        </div>
+        <p className="text-xs text-slate-500 leading-relaxed">
+          Kelola data profil seluruh personel, penugasan departemen, masa aktif kontrak, dan perizinan hak akses sistem.
+        </p>
+      </div>
+
       <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-3.5">
         {/* Left: Search Box with Debounce Indicator */}
         <div className="relative w-full md:w-80">
@@ -340,42 +353,42 @@ export function TeamManagementPage({ onBackToGlobal }: TeamManagementPageProps) 
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Cari nama, email, jabatan, departemen..."
             title="Ketik untuk mencari data anggota tim (jeda 500ms)"
-            className="w-full pl-10 pr-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+            className="w-full pl-10 pr-3.5 py-2 text-xs bg-white border border-slate-200/90 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-slate-900 shadow-2xs transition-all"
           />
         </div>
 
         {/* Right: Role & Status Filters */}
         <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto justify-end">
           {/* Role Filter */}
-          <div className="flex items-center gap-1.5 text-xs">
-            <span className="text-slate-400 font-medium hidden sm:inline">Peran:</span>
-            <select
+          <div className="shrink-0 min-w-[160px]">
+            <SearchableSelect
+              size="sm"
               value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
-              title="Filter anggota berdasarkan peran hak akses (RBAC)"
-              className="text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
-            >
-              <option value="all">Semua Peran</option>
-              <option value="owner">👑 Owner</option>
-              <option value="pm">💼 Project Manager</option>
-              <option value="karyawan">🛠️ Karyawan</option>
-              <option value="magang">🎓 Magang</option>
-            </select>
+              onChange={(val) => setRoleFilter(val)}
+              options={[
+                { value: "all", label: "Semua Peran" },
+                { value: "owner", label: "Owner", badge: <span className="text-[10px] bg-amber-100 text-amber-800 px-1 py-0.2 rounded font-bold">Owner</span> },
+                { value: "pm", label: "Project Manager", badge: <span className="text-[10px] bg-sky-100 text-sky-800 px-1 py-0.2 rounded font-bold">PM</span> },
+                { value: "karyawan", label: "Karyawan", badge: <span className="text-[10px] bg-slate-100 text-slate-700 px-1 py-0.2 rounded font-bold">Karyawan</span> },
+                { value: "magang", label: "Magang", badge: <span className="text-[10px] bg-purple-100 text-purple-800 px-1 py-0.2 rounded font-bold">Magang</span> },
+              ]}
+              minItemsForSearch={8}
+            />
           </div>
 
           {/* Status Filter */}
-          <div className="flex items-center gap-1.5 text-xs">
-            <span className="text-slate-400 font-medium hidden sm:inline">Status Akun:</span>
-            <select
+          <div className="shrink-0 min-w-[150px]">
+            <SearchableSelect
+              size="sm"
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              title="Filter anggota berdasarkan status keaktifan akun"
-              className="text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
-            >
-              <option value="all">Semua Status Akun</option>
-              <option value="active">Akun Aktif</option>
-              <option value="inactive">Akun Nonaktif</option>
-            </select>
+              onChange={(val) => setStatusFilter(val)}
+              options={[
+                { value: "all", label: "Semua Status Akun" },
+                { value: "active", label: "Akun Aktif", badge: <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1 py-0.2 rounded font-bold">Aktif</span> },
+                { value: "inactive", label: "Akun Nonaktif", badge: <span className="text-[10px] bg-rose-100 text-rose-800 px-1 py-0.2 rounded font-bold">Nonaktif</span> },
+              ]}
+              minItemsForSearch={8}
+            />
           </div>
 
           {(search || roleFilter !== "all" || statusFilter !== "all") && (

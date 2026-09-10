@@ -459,9 +459,8 @@ export function FileUploadModal({
 
         {/* Task Linkage Selector */}
         <div className="space-y-1.5 pt-1">
-          <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-            <Layers className="w-3.5 h-3.5 text-blue-600" />
-            <span>Kaitkan Semua Berkas ke Task Tertentu (Opsional)</span>
+          <label className="text-xs font-bold text-slate-700">
+            Kaitkan Semua Berkas ke Task Tertentu (Opsional)
           </label>
           <SearchableSelect
             options={[

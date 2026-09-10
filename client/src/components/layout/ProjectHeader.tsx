@@ -15,8 +15,10 @@ import {
   CheckCircle2,
   ArrowLeft,
   Eye,
-  ShieldCheck
+  ShieldCheck,
+  MapPin,
 } from "lucide-react";
+import { useProjectLocations } from "../../api/client";
 
 interface ProjectHeaderProps {
   project: Project;
@@ -25,6 +27,7 @@ interface ProjectHeaderProps {
   canEditProject?: boolean;
   onTabChange: (tab: ActiveTab) => void;
   onEditProject: () => void;
+  onOpenLocationManager?: () => void;
   onBackToGlobal?: () => void;
 }
 
@@ -35,8 +38,10 @@ export function ProjectHeader({
   canEditProject = true,
   onTabChange,
   onEditProject,
+  onOpenLocationManager,
   onBackToGlobal,
 }: ProjectHeaderProps) {
+  const { data: locations = [] } = useProjectLocations(project.id);
   // Progress calculated from acceptance criteria checklist, fallback to tasks if no criteria
   const totalTasks = project.total_tasks || 0;
   const activeTasks = project.active_tasks ?? (project.total_tasks ? project.total_tasks - (project.backlog_tasks || 0) : 0);
@@ -63,7 +68,7 @@ export function ProjectHeader({
   };
 
   return (
-    <div className="mb-6 space-y-4">
+    <div className="mb-4 space-y-4">
       {/* Back to Global Dashboard Button */}
       {onBackToGlobal && (
         <div className="flex items-center gap-2">
@@ -128,6 +133,23 @@ export function ProjectHeader({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            {onOpenLocationManager && (
+              <button
+                type="button"
+                onClick={onOpenLocationManager}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-sky-700 hover:text-sky-800 bg-sky-50 hover:bg-sky-100 border border-sky-200/90 rounded-xl transition-all shadow-2xs"
+                title="Kelola lokasi proyek (site, gedung, workshop, line)"
+              >
+                <MapPin className="w-3.5 h-3.5 text-sky-600" />
+                <span>Lokasi Proyek</span>
+                {locations.length > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-sky-200/80 text-sky-800">
+                    {locations.length}
+                  </span>
+                )}
+              </button>
+            )}
+
             {canEditProject && (
               <button
                 type="button"

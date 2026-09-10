@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { BOMCategory } from "../../types";
 import { Modal } from "../common/Modal";
+import { SearchableSelect } from "../common/SearchableSelect";
 import { Pagination } from "../common/Pagination";
 import { 
   useBOMCategories, 
@@ -43,6 +44,26 @@ export function getCategoryBadgeClass(color?: string) {
     case "slate":
     default:
       return "bg-slate-50 text-slate-700 border-slate-200";
+  }
+}
+
+export function getCategoryRowClass(color?: string) {
+  switch (color) {
+    case "blue":
+      return "bg-sky-50/70 hover:bg-sky-100/70 border-sky-200/90";
+    case "amber":
+      return "bg-amber-50/70 hover:bg-amber-100/70 border-amber-200/90";
+    case "rose":
+      return "bg-rose-50/70 hover:bg-rose-100/70 border-rose-200/90";
+    case "emerald":
+      return "bg-emerald-50/70 hover:bg-emerald-100/70 border-emerald-200/90";
+    case "purple":
+      return "bg-purple-50/70 hover:bg-purple-100/70 border-purple-200/90";
+    case "teal":
+      return "bg-teal-50/70 hover:bg-teal-100/70 border-teal-200/90";
+    case "slate":
+    default:
+      return "bg-slate-50/90 hover:bg-slate-100 border-slate-200";
   }
 }
 
@@ -241,6 +262,19 @@ export function BOMCategoryMasterPage({ onBackToGlobal }: BOMCategoryMasterPageP
         </div>
       </div>
 
+      {/* Section Header */}
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <div className="w-1.5 h-4 rounded-full bg-blue-600 shrink-0" />
+          <h2 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
+            Daftar Standarisasi Kategori Material
+          </h2>
+        </div>
+        <p className="text-xs text-slate-500 leading-relaxed">
+          Kelola master kategori komponen hardware dan material yang digunakan secara global pada seluruh Bill of Materials (BOM).
+        </p>
+      </div>
+
       {/* Toolbar: Search & Info */}
       <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-card flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="relative flex-1 max-w-md">
@@ -250,7 +284,7 @@ export function BOMCategoryMasterPage({ onBackToGlobal }: BOMCategoryMasterPageP
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Cari nama kategori atau contoh komponen..."
-            className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-medium"
+            className="w-full pl-9 pr-3 py-2 text-xs bg-white border border-slate-200/90 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 font-medium text-slate-900 shadow-2xs transition-colors"
           />
         </div>
 
@@ -391,7 +425,7 @@ export function BOMCategoryMasterPage({ onBackToGlobal }: BOMCategoryMasterPageP
               value={formName}
               onChange={(e) => setFormName(e.target.value)}
               placeholder="Contoh: MIKROKONTROLER"
-              className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-3 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 uppercase font-bold text-slate-900 tracking-wide"
+              className="w-full text-xs bg-white border border-slate-200/90 rounded-xl p-3 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 uppercase font-bold text-slate-900 tracking-wide shadow-2xs transition-colors"
               autoFocus
             />
           </div>
@@ -400,17 +434,17 @@ export function BOMCategoryMasterPage({ onBackToGlobal }: BOMCategoryMasterPageP
             <label className="block text-xs font-bold text-slate-800 mb-1.5">
               Warna Label Badge
             </label>
-            <select
+            <SearchableSelect
               value={formColor}
-              onChange={(e) => setFormColor(e.target.value)}
-              className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-3 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-medium text-slate-800"
-            >
-              {COLOR_OPTIONS.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setFormColor(val)}
+              options={COLOR_OPTIONS.map((c) => ({
+                value: c.id,
+                label: c.name,
+                badge: <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${c.bgClass}`}>Badge</span>,
+              }))}
+              placeholder="-- Pilih Warna Badge --"
+              minItemsForSearch={8}
+            />
           </div>
 
           <div>
@@ -422,12 +456,12 @@ export function BOMCategoryMasterPage({ onBackToGlobal }: BOMCategoryMasterPageP
               value={formDesc}
               onChange={(e) => setFormDesc(e.target.value)}
               placeholder="Contoh: ESP32 DevKit, Arduino Uno, STM32 Bluepill, Raspberry Pi Pico"
-              className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-3 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-medium text-slate-800"
+              className="w-full text-xs bg-white border border-slate-200/90 rounded-xl p-3 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 font-medium text-slate-800 shadow-2xs transition-colors"
             />
           </div>
 
           {/* Preview Badge */}
-          <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+          <div className="p-3 bg-white border border-slate-200/90 rounded-xl flex items-center justify-between shadow-2xs">
             <span className="text-xs text-slate-500 font-medium">Pratinjau Badge:</span>
             <span
               className={`px-3 py-1 rounded-lg text-xs font-extrabold border tracking-wider uppercase ${getCategoryBadgeClass(

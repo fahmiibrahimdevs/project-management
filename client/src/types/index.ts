@@ -46,6 +46,21 @@ export interface LoginResponse {
   user: User;
 }
 
+export interface ProjectLocation {
+  id: string;
+  project_id: string;
+  name: string;
+  description?: string;
+  address?: string;
+  created_at: string;
+  updated_at: string;
+  total_tasks?: number;
+  active_tasks?: number;
+  completed_tasks?: number;
+  total_bom_cost?: number;
+  open_issues_count?: number;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -60,12 +75,18 @@ export interface Project {
   active_tasks?: number;
   completed_tasks?: number;
   backlog_tasks?: number;
+  in_progress_tasks?: number;
+  in_review_tasks?: number;
+  revision_tasks?: number;
+  on_hold_tasks?: number;
   total_criteria?: number;
   completed_criteria?: number;
   total_bom_cost?: number;
   open_issues_count?: number;
   member_count?: number;
   members?: Member[];
+  locations?: ProjectLocation[];
+  location_count?: number;
 }
 
 export interface AcceptanceCriterion {
@@ -76,6 +97,9 @@ export interface AcceptanceCriterion {
   completed_by_id?: string;
   completed_by_name?: string;
   completed_at?: string;
+  cancelled_by_id?: string;
+  cancelled_by_name?: string;
+  cancelled_at?: string;
   order_index: number;
   created_at?: string;
 }
@@ -109,6 +133,8 @@ export interface Task {
   description: string;
   status: TaskStatus;
   priority: TaskPriority;
+  location_id?: string | null;
+  location_name?: string | null;
   assignees?: Member[];
   assignee_ids?: string[];
   deadline?: string | null;
@@ -151,6 +177,8 @@ export interface BOMCategory {
 export interface BOMItem {
   id: string;
   project_id: string;
+  location_id?: string | null;
+  location_name?: string | null;
   item_name: string;
   category_id?: string;
   category_name?: string;
@@ -191,6 +219,8 @@ export interface BOMResponse {
 export interface IssueLog {
   id: string;
   project_id: string;
+  location_id?: string | null;
+  location_name?: string | null;
   task_id?: string | null;
   log_date: string;
   problem: string;
@@ -202,7 +232,7 @@ export interface IssueLog {
   reported_by_id: string;
   created_at: string;
   updated_at: string;
-
+  
   // Joined fields
   reported_by_name?: string;
   reported_by_email?: string;

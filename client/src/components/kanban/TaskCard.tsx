@@ -5,7 +5,8 @@ import { Avatar } from "../common/Avatar";
 import { 
   CheckSquare, 
   MessageSquare, 
-  Paperclip
+  Paperclip,
+  MapPin
 } from "lucide-react";
 
 interface TaskCardProps {
@@ -41,9 +42,22 @@ export function TaskCard({ task, onClick, isDragging = false }: TaskCardProps) {
       </div>
 
       {/* Title */}
-      <h4 className="text-xs font-semibold text-slate-800 group-hover:text-blue-600 transition-colors line-clamp-2 leading-snug mb-2">
+      <h4 className="text-xs font-semibold text-slate-800 group-hover:text-blue-600 transition-colors line-clamp-2 leading-snug mb-1.5">
         {task.title}
       </h4>
+
+      {/* Location Badge (Dynamic Projects Location) */}
+      {task.location_name && (
+        <div className="mb-2">
+          <span
+            className="inline-flex items-center gap-1 text-[10px] font-medium text-sky-700 bg-sky-50 px-2 py-0.5 rounded-md border border-sky-200/80 max-w-full truncate"
+            title={`Lokasi: ${task.location_name}`}
+          >
+            <MapPin className="w-2.5 h-2.5 text-sky-600 shrink-0" />
+            <span className="truncate">{task.location_name}</span>
+          </span>
+        </div>
+      )}
 
       {/* Description Snippet (if available) */}
       {task.description && (

@@ -31,6 +31,31 @@
   ::-webkit-scrollbar-thumb:hover {
     background: #94a3b8;
   }
+  /* Default clean white inputs & selects */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]):not([type="submit"]):not([type="button"]):not([type="reset"]),
+  textarea {
+    background-color: #ffffff;
+    color: #0f172a;
+  }
+
+  select {
+    background-color: #ffffff;
+    color: #0f172a;
+    cursor: pointer;
+  }
+
+  select option {
+    background-color: #ffffff;
+    color: #0f172a;
+    padding: 8px 12px;
+  }
+
+  select option:hover,
+  select option:focus,
+  select option:checked {
+    background-color: #f0f9ff;
+    color: #0369a1;
+  }
 }
 
 .kanban-col-scroll {

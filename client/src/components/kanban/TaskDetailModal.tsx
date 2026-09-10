@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Modal } from "../common/Modal";
 import { PriorityBadge, StatusBadge, DeadlineBadge } from "../common/Badge";
 import { Avatar } from "../common/Avatar";
+import { SearchableSelect, SearchableOption } from "../common/SearchableSelect";
 import { AssigneeSelector } from "../common/AssigneeSelector";
 import { AssigneeSidePanel } from "../common/AssigneeSidePanel";
 import { AttachmentSidePanel } from "../attachments/AttachmentSidePanel";
@@ -23,6 +24,7 @@ import {
   useAddAttachment,
   useDeleteAttachment,
   useRenameAttachment,
+  useProjectLocations,
 } from "../../api/client";
 import {
   Calendar,
@@ -46,7 +48,9 @@ import {
   Download,
   Eye,
   Loader2,
-  CheckCircle2
+  CheckCircle2,
+  MapPin,
+  RotateCcw,
 } from "lucide-react";
 import { getDownloadUrl } from "../../utils/download";
 import { format } from "date-fns";
@@ -90,6 +94,9 @@ export function TaskDetailModal({
   const [status, setStatus] = useState<TaskStatus>("backlog");
   const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>([]);
   const [deadline, setDeadline] = useState("");
+  const [selectedLocationId, setSelectedLocationId] = useState<string>("");
+
+  const { data: locations = [] } = useProjectLocations(task?.project_id || projectId);
 
   // Criteria inline editing state
   const [editingCriteriaId, setEditingCriteriaId] = useState<string | null>(null);
@@ -112,6 +119,7 @@ export function TaskDetailModal({
       setStatus(task.status);
       setSelectedAssigneeIds(task.assignees ? task.assignees.map((a: Member) => a.id) : []);
       setDeadline(task.deadline ? task.deadline.slice(0, 10) : "");
+      setSelectedLocationId(task.location_id || "");
     }
   }, [task]);
 
@@ -189,6 +197,14 @@ export function TaskDetailModal({
     });
   };
 
+  const handleLocationChange = (newLocationId: string) => {
+    setSelectedLocationId(newLocationId);
+    updateTaskMutation.mutate({
+      id: task.id,
+      data: { location_id: newLocationId ? newLocationId : null },
+    });
+  };
+
   const handleAddCriteria = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCriteriaText.trim()) return;
@@ -225,7 +241,7 @@ export function TaskDetailModal({
     setEditingCriteriaText("");
   };
 
-  const handleToggleCriteria = (criterion: AcceptanceCriterion) => {
+  const handleToggleCriteria = async (criterion: AcceptanceCriterion) => {
     if (criterion.is_completed === 1) {
       // Unchecking: only person who checked it OR PM/Owner (isSuperUser)
       const canUncheck = isSuperUser || criterion.completed_by_id === user?.id;
@@ -233,19 +249,33 @@ export function TaskDetailModal({
         showAlert({
           icon: "warning",
           title: "Akses Dibatasi",
-          text: `Hanya ${criterion.completed_by_name || "orang yang menceklis"} atau PM/Owner yang berhak membatalkan kriteria ini.`,
+          text: `Hanya ${criterion.completed_by_name || "orang yang menceklis"} atau PM/Owner yang berhak membatalkan verifikasi kriteria ini.`,
         });
         return;
       }
+
+      // Proteksi Uncheck Tidak Sengaja (Accidental Uncheck Protection)
+      const confirmed = await showConfirm({
+        title: "Batalkan Penyelesaian Kriteria?",
+        text: `Kriteria "${criterion.text}" sebelumnya telah diverifikasi selesai oleh ${criterion.completed_by_name || "Anda"}. Apakah Anda yakin ingin membatalkan penyelesaian kriteria ini? Progres tugas akan berkurang.`,
+        confirmButtonText: "Ya, Batalkan Verifikasi",
+        cancelButtonText: "Batal (Tetap Selesai)",
+        icon: "warning",
+        isDanger: true,
+      });
+
+      if (!confirmed) return;
+
       toggleCriteriaMutation.mutate(
         {
           taskId: task.id,
           criteriaId: criterion.id,
           is_completed: false,
           completed_by_id: null,
+          cancelled_by_id: user?.id,
         },
         {
-          onSuccess: () => notifyInfo("Kriteria dibatalkan"),
+          onSuccess: () => notifyInfo("Verifikasi kriteria dibatalkan"),
         }
       );
     } else {
@@ -613,31 +643,55 @@ export function TaskDetailModal({
         {/* 🌟 PROMINENT METADATA PANEL (ABOVE Acceptance Criteria) */}
         <div className="p-4 bg-white rounded-2xl border border-slate-200/90 shadow-card space-y-4">
           {/* Quick Properties: Status, Priority, Deadline */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pb-3 border-b border-slate-100">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {/* Status */}
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                <Tag className="w-3.5 h-3.5 text-blue-600" />
-                <span>Status Kolom</span>
+              <label className="text-xs font-bold text-slate-700">
+                Status Kolom
               </label>
               {canChangeStatus ? (
-                <select
+                <SearchableSelect
                   value={status}
-                  onChange={(e) => handleStatusChange(e.target.value as TaskStatus)}
-                  title="Ubah status pengerjaan tugas"
-                  className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
-                >
-                  <option value="backlog">Perencanaan</option>
-                  <option value="in_progress">Sedang Dikerjakan</option>
-                  <option value="in_review">Dalam Peninjauan</option>
-                  <option value="revision">Perlu Revisi</option>
-                  <option value="completed" disabled={!isSuperUser}>
-                    Selesai {!isSuperUser ? "(Khusus PM/Owner)" : ""}
-                  </option>
-                  <option value="on_hold" disabled={!isSuperUser}>
-                    Ditunda {!isSuperUser ? "(Khusus PM/Owner)" : ""}
-                  </option>
-                </select>
+                  onChange={(val) => handleStatusChange(val as TaskStatus)}
+                  options={[
+                    {
+                      value: "backlog",
+                      label: "Perencanaan",
+                      badge: <span className="text-[10px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-bold">Backlog</span>,
+                    },
+                    {
+                      value: "in_progress",
+                      label: "Sedang Dikerjakan",
+                      badge: <span className="text-[10px] bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded font-bold">Progress</span>,
+                    },
+                    {
+                      value: "in_review",
+                      label: "Dalam Peninjauan",
+                      badge: <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold">Review</span>,
+                    },
+                    {
+                      value: "revision",
+                      label: "Perlu Revisi",
+                      badge: <span className="text-[10px] bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded font-bold">Revisi</span>,
+                    },
+                    {
+                      value: "completed",
+                      label: "Selesai",
+                      sublabel: !isSuperUser ? "Khusus PM/Owner" : undefined,
+                      disabled: !isSuperUser,
+                      badge: <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-bold">Selesai</span>,
+                    },
+                    {
+                      value: "on_hold",
+                      label: "Ditunda",
+                      sublabel: !isSuperUser ? "Khusus PM/Owner" : undefined,
+                      disabled: !isSuperUser,
+                      badge: <span className="text-[10px] bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded font-bold">Ditunda</span>,
+                    },
+                  ]}
+                  placeholder="-- Pilih Status --"
+                  minItemsForSearch={8}
+                />
               ) : (
                 <div className="pt-1">
                   <StatusBadge status={task.status} />
@@ -647,52 +701,60 @@ export function TaskDetailModal({
 
             {/* Priority */}
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                <Flag className="w-3.5 h-3.5 text-amber-500" />
-                <span>Tingkat Prioritas</span>
+              <label className="text-xs font-bold text-slate-700">
+                Tingkat Prioritas
               </label>
-              <select
+              <SearchableSelect
                 disabled={!canEditTaskProperties}
                 value={priority}
-                onChange={(e) => handlePriorityChange(e.target.value as TaskPriority)}
-                title="Ubah tingkat prioritas tugas"
-                className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:opacity-75 cursor-pointer"
-              >
-                <option value="low">Prioritas: Rendah</option>
-                <option value="medium">Prioritas: Sedang</option>
-                <option value="high">Prioritas: Tinggi</option>
-                <option value="urgent">Prioritas: Mendesak</option>
-              </select>
+                onChange={(val) => handlePriorityChange(val as TaskPriority)}
+                options={[
+                  {
+                    value: "low",
+                    label: "Prioritas: Rendah",
+                    badge: <span className="text-[10px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-bold">Rendah</span>,
+                  },
+                  {
+                    value: "medium",
+                    label: "Prioritas: Sedang",
+                    badge: <span className="text-[10px] bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded font-bold">Sedang</span>,
+                  },
+                  {
+                    value: "high",
+                    label: "Prioritas: Tinggi",
+                    badge: <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold">Tinggi</span>,
+                  },
+                  {
+                    value: "urgent",
+                    label: "Prioritas: Mendesak",
+                    badge: <span className="text-[10px] bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded font-bold">Mendesak</span>,
+                  },
+                ]}
+                placeholder="-- Pilih Prioritas --"
+                minItemsForSearch={8}
+              />
             </div>
 
             {/* Deadline */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-slate-500" />
-                <span>Batas Waktu (Tenggat)</span>
-              </label>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-700">
+                  Batas Waktu (Tenggat)
+                </label>
+                {deadline && (
+                  <DeadlineBadge deadline={deadline} status={status} compact={true} />
+                )}
+              </div>
               {canEditTaskProperties ? (
-                <div className="space-y-1">
-                  <input
-                    type="date"
-                    value={deadline}
-                    onChange={handleDeadlineChange}
-                    className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2.5 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-medium text-slate-800"
-                  />
-                  {deadline && (
-                    <div className="pt-0.5">
-                      <DeadlineBadge deadline={deadline} status={status} compact={false} />
-                    </div>
-                  )}
-                </div>
+                <input
+                  type="date"
+                  value={deadline}
+                  onChange={handleDeadlineChange}
+                  className="w-full text-xs bg-white border border-slate-200/90 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 font-medium text-slate-800 cursor-pointer shadow-2xs transition-colors"
+                />
               ) : (
-                <div className="flex items-center justify-between gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs">
-                  <span className="font-semibold text-slate-800">
-                    {deadline ? format(new Date(deadline), "dd MMM yyyy") : "-"}
-                  </span>
-                  {deadline && (
-                    <DeadlineBadge deadline={deadline} status={status} compact={true} />
-                  )}
+                <div className="p-2.5 bg-white border border-slate-200/90 rounded-xl text-xs font-semibold text-slate-800 shadow-2xs">
+                  {deadline ? format(new Date(deadline), "dd MMM yyyy") : "-"}
                 </div>
               )}
             </div>
@@ -713,18 +775,48 @@ export function TaskDetailModal({
             }}
             label="Pelaksana Tugas yang Ditugaskan (Assignee)"
           />
+
+          {/* Dynamic Project Location Control */}
+          {locations.length > 0 && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <span className="text-xs font-bold text-slate-700 shrink-0">Lokasi Pelaksanaan:</span>
+              <div className="min-w-[220px] flex-1 sm:max-w-xs">
+                {canEditTaskProperties ? (
+                  <SearchableSelect
+                    value={selectedLocationId}
+                    onChange={(val) => handleLocationChange(val)}
+                    options={[
+                      { value: "", label: "-- Seluruh Proyek / Tanpa Lokasi --" },
+                      ...locations.map((loc) => ({
+                        value: loc.id,
+                        label: `📍 ${loc.name}`,
+                        sublabel: loc.address || undefined,
+                      })),
+                    ]}
+                    placeholder="-- Pilih Lokasi --"
+                    searchPlaceholder="Cari lokasi..."
+                    minItemsForSearch={4}
+                  />
+                ) : (
+                  <span className="text-xs font-semibold text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 inline-block">
+                    {task.location_name || "Seluruh Proyek"}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 📋 Acceptance Criteria Checklist (Spacious Full Width) */}
-        <div className="bg-slate-50/90 rounded-2xl p-4 sm:p-5 border border-slate-200/90 space-y-3.5 shadow-2xs">
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 space-y-3.5 shadow-card">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <CheckSquare className="w-4 h-4 text-blue-600" />
+              <CheckSquare className="w-4 h-4 text-sky-600" />
               <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
                 Acceptance Criteria ({completedCount}/{criteria.length})
               </h3>
             </div>
-            <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">
+            <span className="text-xs font-bold text-sky-700 bg-sky-50 px-2.5 py-0.5 rounded-full border border-sky-200">
               {progressPercent}% Selesai
             </span>
           </div>
@@ -777,6 +869,20 @@ export function TaskDetailModal({
                 }
               }
 
+              let formattedCancelledTime = "";
+              if (c.cancelled_at) {
+                try {
+                  const dateObj = new Date(c.cancelled_at);
+                  if (!isNaN(dateObj.getTime())) {
+                    formattedCancelledTime = format(dateObj, "dd MMM yyyy, HH:mm");
+                  } else {
+                    formattedCancelledTime = c.cancelled_at;
+                  }
+                } catch {
+                  formattedCancelledTime = c.cancelled_at;
+                }
+              }
+
               const isEditingThis = editingCriteriaId === c.id;
 
               return (
@@ -821,26 +927,58 @@ export function TaskDetailModal({
                   ) : (
                     <>
                       <div
-                        onClick={() => handleToggleCriteria(c)}
+                        onClick={() => {
+                          if (isChecked && !canUncheck) {
+                            showAlert({
+                              icon: "warning",
+                              title: "Kriteria Terkunci",
+                              text: `Kriteria ini telah diverifikasi selesai oleh ${c.completed_by_name || "anggota tim"}. Hanya orang yang menceklis atau PM/Owner yang dapat membatalkan kriteria ini.`,
+                            });
+                            return;
+                          }
+                          if (!isChecked && !canCheckCriteria) {
+                            showAlert({
+                              icon: "warning",
+                              title: "Akses Terbatas",
+                              text: "Hanya pelaksana tugas atau PM/Owner yang dapat menceklis kriteria ini.",
+                            });
+                            return;
+                          }
+                          handleToggleCriteria(c);
+                        }}
                         className={`flex items-start gap-3 flex-1 select-none ${
-                          canClick ? "cursor-pointer" : "cursor-not-allowed opacity-80"
+                          isChecked && !canUncheck
+                            ? "cursor-not-allowed opacity-90"
+                            : canClick
+                            ? "cursor-pointer"
+                            : "cursor-not-allowed opacity-80"
                         }`}
                         title={
                           isChecked && !canUncheck
-                            ? `Hanya ${c.completed_by_name || "yang menceklis"} atau PM/Owner yang dapat membatalkan ceklis kriteria ini.`
+                            ? `Terkunci: diverifikasi oleh ${c.completed_by_name || "anggota lain"}. Hanya penyelesai atau PM/Owner yang dapat membatalkan.`
+                            : isChecked
+                            ? "Klik untuk membatalkan verifikasi (memerlukan konfirmasi tegas)"
                             : !canCheckCriteria
                             ? "Hanya pelaksana tugas atau PM/Owner yang dapat menceklis kriteria ini."
-                            : ""
+                            : "Klik untuk menandai kriteria selesai"
                         }
                       >
                         <div
                           className={`w-4 h-4 mt-0.5 rounded border flex items-center justify-center transition-colors shrink-0 ${
                             isChecked
-                              ? "bg-emerald-600 border-emerald-600 text-white"
+                              ? canUncheck
+                                ? "bg-emerald-600 border-emerald-600 text-white shadow-2xs"
+                                : "bg-emerald-700/80 border-emerald-700 text-white"
                               : "border-slate-300 bg-white"
                           }`}
                         >
-                          {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                          {isChecked ? (
+                            !canUncheck ? (
+                              <Lock className="w-2.5 h-2.5 text-white" />
+                            ) : (
+                              <Check className="w-3 h-3 stroke-[3]" />
+                            )
+                          ) : null}
                         </div>
                         <div className="flex-1 min-w-0">
                           <span
@@ -862,6 +1000,30 @@ export function TaskDetailModal({
                                     <span className="text-emerald-400 font-bold">•</span>
                                     <span className="font-mono text-[10px] text-emerald-800">
                                       {formattedCompletedTime}
+                                    </span>
+                                  </>
+                                )}
+                              </span>
+                              {!canUncheck && (
+                                <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-800 border border-amber-200/80 px-1.5 py-0.5 rounded text-[10px] font-bold shadow-2xs">
+                                  <Lock className="w-2.5 h-2.5 text-amber-600" />
+                                  <span>Terkunci untuk Anda</span>
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          {!isChecked && (c.cancelled_by_name || c.cancelled_at) && (
+                            <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-medium mt-1">
+                              <span className="inline-flex items-center gap-1.5 bg-rose-50 text-rose-900 px-2 py-0.5 rounded-md border border-rose-200/80 shadow-2xs">
+                                <RotateCcw className="w-3 h-3 text-rose-600 shrink-0" />
+                                <span>
+                                  Dibatalkan oleh: <strong>{c.cancelled_by_name || "Anggota Tim"}</strong>
+                                </span>
+                                {formattedCancelledTime && (
+                                  <>
+                                    <span className="text-rose-400 font-bold">•</span>
+                                    <span className="font-mono text-[10px] text-rose-800">
+                                      {formattedCancelledTime}
                                     </span>
                                   </>
                                 )}
@@ -906,12 +1068,12 @@ export function TaskDetailModal({
                 value={newCriteriaText}
                 onChange={(e) => setNewCriteriaText(e.target.value)}
                 placeholder="Tambah kriteria penerimaan tugas..."
-                className="flex-1 text-xs bg-white border border-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className="flex-1 text-xs bg-white border border-slate-200/90 rounded-xl px-3 py-2.5 text-slate-900 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 shadow-2xs transition-colors"
               />
               <button
                 type="submit"
                 disabled={!newCriteriaText.trim() || addCriteriaMutation.isPending}
-                className="px-4 py-2.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-xl shadow-xs"
+                className="px-4 py-2.5 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 active:bg-sky-800 disabled:opacity-50 rounded-xl shadow-xs transition-colors"
               >
                 <Plus className="w-3.5 h-3.5" />
               </button>
@@ -922,9 +1084,9 @@ export function TaskDetailModal({
         {/* 💬 Bottom 2-Column Grid: Diskusi Komentar & Lampiran */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Comments Thread */}
-          <div className="bg-slate-50/90 rounded-2xl p-4 border border-slate-200/80 space-y-3">
+          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-card space-y-3">
             <div className="flex items-center gap-2">
-              <MessageSquare className="w-4 h-4 text-blue-600" />
+              <MessageSquare className="w-4 h-4 text-sky-600" />
               <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
                 Diskusi & Komentar ({task.comments?.length || 0})
               </h3>
@@ -939,13 +1101,13 @@ export function TaskDetailModal({
                 task.comments?.map((comment: TaskComment) => (
                   <div
                     key={comment.id}
-                    className="bg-white p-3 rounded-xl border border-slate-200/70 shadow-2xs space-y-1.5"
+                    className="bg-slate-50/70 p-3 rounded-xl border border-slate-200/80 shadow-2xs space-y-1.5"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Avatar
                           name={comment.author_name || "User"}
-                          color={comment.author_avatar_color || "#2563eb"}
+                          color={comment.author_avatar_color || "#0ea5e9"}
                           size="xs"
                         />
                         <span className="text-xs font-bold text-slate-800">
@@ -987,38 +1149,38 @@ export function TaskDetailModal({
                   value={newCommentText}
                   onChange={(e) => setNewCommentText(e.target.value)}
                   placeholder="Tulis pesan diskusi teknis..."
-                  className="flex-1 text-xs bg-white border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className="flex-1 text-xs bg-white border border-slate-200/90 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 shadow-2xs transition-colors"
                 />
                 <button
                   type="submit"
                   disabled={!newCommentText.trim() || addCommentMutation.isPending}
-                  className="px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-xl shadow-xs flex items-center gap-1 cursor-pointer"
+                  className="px-3.5 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 disabled:opacity-50 rounded-xl shadow-xs flex items-center gap-1 cursor-pointer transition-colors"
                 >
                   <Send className="w-3.5 h-3.5" />
                   <span>Kirim</span>
                 </button>
               </form>
             ) : (
-              <p className="text-[11px] text-slate-400 italic text-center py-2 bg-white rounded-xl border border-slate-200/70">
+              <p className="text-[11px] text-slate-400 italic text-center py-2 bg-slate-50 rounded-xl border border-slate-200/70">
                 Hanya anggota terdaftar dalam proyek yang dapat mengirim komentar.
               </p>
             )}
           </div>
 
           {/* Attachments */}
-          <div className="bg-slate-50/90 rounded-2xl p-4 border border-slate-200/80 space-y-3">
+          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-card space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Paperclip className="w-4 h-4 text-blue-600" />
+                <Paperclip className="w-4 h-4 text-sky-600" />
                 <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
                   Lampiran File ({task.attachments?.length || 0})
                 </h3>
               </div>
 
               {canUploadAttachment && (
-                <label className="cursor-pointer inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200/80">
-                  <UploadCloud className="w-3.5 h-3.5" />
-                  <span>{isUploading ? (uploadProgressText || "Mengunggah...") : "+ Upload File"}</span>
+                <label className="cursor-pointer inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-sky-700 bg-sky-50 hover:bg-sky-100 rounded-lg transition-colors border border-sky-200/80">
+                  <UploadCloud className="w-3.5 h-3.5 text-sky-600" />
+                  <span>{isUploading ? (uploadProgressText || "Mengunggah...") : "Upload File"}</span>
                   <input
                     type="file"
                     multiple

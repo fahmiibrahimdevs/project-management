@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { Search, ChevronDown, Check, X } from "lucide-react";
 
 export interface SearchableOption {
@@ -38,15 +39,58 @@ export function SearchableSelect({
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const [coords, setCoords] = useState<{
+    top: number;
+    left: number;
+    width: number;
+    placeAbove: boolean;
+  }>({
+    top: 0,
+    left: 0,
+    width: 0,
+    placeAbove: false,
+  });
+
+  // Calculate coordinates for floating popover (Portal)
+  const updatePosition = () => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const estimatedHeight = 260;
+    const placeAbove = spaceBelow < estimatedHeight && rect.top > estimatedHeight;
+
+    const minWidth = size === "sm" ? 160 : 190;
+    const popoverWidth = Math.max(rect.width, minWidth);
+    let leftPos = rect.left;
+
+    // Prevent overflow on the right of viewport
+    if (leftPos + popoverWidth > window.innerWidth - 12) {
+      leftPos = Math.max(12, window.innerWidth - popoverWidth - 12);
+    }
+
+    setCoords({
+      top: placeAbove ? rect.top - 6 : rect.bottom + 6,
+      left: Math.max(12, leftPos),
+      width: popoverWidth,
+      placeAbove,
+    });
+  };
 
   // Close dropdown on outside click
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      const clickedTrigger = containerRef.current && containerRef.current.contains(target);
+      const clickedPopover = popoverRef.current && popoverRef.current.contains(target);
+
+      if (!clickedTrigger && !clickedPopover) {
         setIsOpen(false);
       }
     }
+
     if (isOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     }
@@ -55,12 +99,28 @@ export function SearchableSelect({
     };
   }, [isOpen]);
 
+  // Update position on scroll/resize when open
+  useEffect(() => {
+    if (isOpen) {
+      updatePosition();
+      const handleScrollOrResize = () => {
+        updatePosition();
+      };
+      window.addEventListener("scroll", handleScrollOrResize, true);
+      window.addEventListener("resize", handleScrollOrResize);
+      return () => {
+        window.removeEventListener("scroll", handleScrollOrResize, true);
+        window.removeEventListener("resize", handleScrollOrResize);
+      };
+    }
+  }, [isOpen]);
+
   // Focus search input when opened
   useEffect(() => {
     if (isOpen && options.length > minItemsForSearch) {
       setTimeout(() => {
         searchInputRef.current?.focus();
-      }, 50);
+      }, 60);
     }
     if (!isOpen) {
       setSearch("");
@@ -97,156 +157,177 @@ export function SearchableSelect({
   };
 
   const sizeClasses = {
-    sm: "py-1.5 px-2.5 text-xs rounded-lg",
+    sm: "py-1.5 px-2.5 text-xs rounded-xl",
     md: "py-2.5 px-3 text-xs rounded-xl",
     lg: "py-3 px-3.5 text-sm rounded-xl",
   }[size];
 
   return (
-    <div className={`relative w-full ${className}`} ref={containerRef}>
-      {/* Trigger Button */}
-      <div
-        onClick={() => {
-          if (!disabled) setIsOpen(!isOpen);
-        }}
-        className={`w-full flex items-center justify-between gap-2 border transition-all cursor-pointer select-none ${sizeClasses} ${
-          disabled
-            ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-75"
-            : isOpen
-            ? "bg-white border-blue-500 ring-2 ring-blue-500/20 shadow-xs"
-            : "bg-slate-50 hover:bg-white border-slate-200 text-slate-800"
-        }`}
-      >
-        <div className="flex items-center gap-2 min-w-0 flex-1">
-          {selectedOption?.icon && (
-            <span className="shrink-0 text-slate-500">{selectedOption.icon}</span>
-          )}
+    <>
+      <div className={`relative w-full ${className}`} ref={containerRef}>
+        {/* Trigger Button */}
+        <div
+          onClick={() => {
+            if (!disabled) {
+              updatePosition();
+              setIsOpen(!isOpen);
+            }
+          }}
+          className={`w-full flex items-center justify-between gap-2 border transition-all cursor-pointer select-none ${sizeClasses} ${
+            disabled
+              ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-75"
+              : isOpen
+              ? "bg-white border-sky-500 ring-2 ring-sky-500/20 shadow-xs"
+              : "bg-white hover:border-slate-300 border-slate-200/90 text-slate-800 shadow-2xs"
+          }`}
+        >
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            {selectedOption?.icon && (
+              <span className="shrink-0 text-slate-500">{selectedOption.icon}</span>
+            )}
 
-          {selectedOption ? (
-            <div className="flex items-center gap-1.5 truncate">
-              <span className="font-semibold text-slate-900 truncate">
-                {selectedOption.label}
-              </span>
-              {selectedOption.badge && (
-                <span className="shrink-0">{selectedOption.badge}</span>
-              )}
-              {selectedOption.sublabel && (
-                <span className="text-[11px] text-slate-400 truncate">
-                  ({selectedOption.sublabel})
+            {selectedOption ? (
+              <div className="flex items-center gap-1.5 truncate">
+                <span className="font-semibold text-slate-900 truncate">
+                  {selectedOption.label}
                 </span>
-              )}
-            </div>
-          ) : (
-            <span className="text-slate-400 truncate">{placeholder}</span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-1 shrink-0 ml-1">
-          {allowClear && selectedOption && !disabled && (
-            <button
-              type="button"
-              onClick={handleClear}
-              className="p-0.5 text-slate-400 hover:text-rose-600 hover:bg-slate-100 rounded transition-colors"
-              title="Hapus Pilihan"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-
-          <ChevronDown
-            className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${
-              isOpen ? "rotate-180 text-blue-600" : ""
-            }`}
-          />
-        </div>
-      </div>
-
-      {/* Popover Menu */}
-      {isOpen && !disabled && (
-        <div className="absolute left-0 right-0 mt-1.5 bg-white rounded-xl border border-slate-200 shadow-xl z-50 overflow-hidden flex flex-col max-h-64 animate-in fade-in zoom-in-95 duration-100 font-sans">
-          {/* Search Box (Active if options > minItemsForSearch) */}
-          {showSearchInput && (
-            <div className="p-2 border-b border-slate-100 bg-slate-50/70 relative">
-              <Search className="w-3.5 h-3.5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                ref={searchInputRef}
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={searchPlaceholder}
-                className="w-full pl-8 pr-7 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-800"
-              />
-              {search && (
-                <button
-                  type="button"
-                  onClick={() => setSearch("")}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 hover:text-slate-600"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Options List */}
-          <div className="overflow-y-auto divide-y divide-slate-50 p-1 flex-1">
-            {filteredOptions.length === 0 ? (
-              <div className="py-6 text-center text-xs text-slate-400 px-3">
-                <span>Tidak ada opsi yang cocok</span>
-                {search && (
-                  <p className="text-[10px] text-slate-400 mt-0.5 truncate font-mono">
-                    &ldquo;{search}&rdquo;
-                  </p>
+                {selectedOption.badge && (
+                  <span className="shrink-0">{selectedOption.badge}</span>
+                )}
+                {selectedOption.sublabel && (
+                  <span className="text-[11px] text-slate-400 truncate">
+                    ({selectedOption.sublabel})
+                  </span>
                 )}
               </div>
             ) : (
-              filteredOptions.map((opt) => {
-                const isSelected = opt.value === value;
-
-                return (
-                  <div
-                    key={opt.value}
-                    onClick={() => handleSelect(opt.value, opt.disabled)}
-                    className={`flex items-center justify-between p-2 text-xs rounded-lg cursor-pointer select-none transition-colors ${
-                      opt.disabled
-                        ? "opacity-50 cursor-not-allowed bg-slate-50 text-slate-400"
-                        : isSelected
-                        ? "bg-blue-50/90 text-blue-900 font-bold"
-                        : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 min-w-0 pr-2">
-                      {opt.icon && <span className="shrink-0">{opt.icon}</span>}
-                      <div className="truncate">
-                        <div className="flex items-center gap-1.5 truncate">
-                          <span className="truncate">{opt.label}</span>
-                          {opt.badge && <span className="shrink-0">{opt.badge}</span>}
-                        </div>
-                        {opt.sublabel && (
-                          <p className="text-[10px] text-slate-400 truncate mt-0.5 font-normal">
-                            {opt.sublabel}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {isSelected && (
-                      <Check className="w-3.5 h-3.5 text-blue-600 stroke-[3] shrink-0 ml-1.5" />
-                    )}
-                  </div>
-                );
-              })
+              <span className="text-slate-400 truncate">{placeholder}</span>
             )}
           </div>
 
-          {/* Options count footer for large lists */}
-          {options.length > 8 && (
-            <div className="px-2.5 py-1 bg-slate-50/80 border-t border-slate-100 text-[10px] text-slate-400 text-right font-medium">
-              Menampilkan {filteredOptions.length} dari {options.length} opsi
-            </div>
-          )}
+          <div className="flex items-center gap-1 shrink-0 ml-1">
+            {allowClear && selectedOption && !disabled && (
+              <button
+                type="button"
+                onClick={handleClear}
+                className="p-0.5 text-slate-400 hover:text-rose-600 hover:bg-slate-100 rounded transition-colors"
+                title="Hapus Pilihan"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+
+            <ChevronDown
+              className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${
+                isOpen ? "rotate-180 text-sky-600" : ""
+              }`}
+            />
+          </div>
         </div>
-      )}
-    </div>
+      </div>
+
+      {/* Popover Menu using Portal to prevent overflow clipping in scrollable toolbars */}
+      {isOpen &&
+        !disabled &&
+        createPortal(
+          <div
+            ref={popoverRef}
+            style={{
+              position: "fixed",
+              top: coords.placeAbove ? undefined : coords.top,
+              bottom: coords.placeAbove ? window.innerHeight - coords.top : undefined,
+              left: coords.left,
+              width: coords.width,
+              minWidth: "160px",
+              maxWidth: "calc(100vw - 24px)",
+              zIndex: 999999,
+            }}
+            className="bg-white rounded-xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col max-h-64 animate-in fade-in zoom-in-95 duration-100 font-sans"
+          >
+            {/* Search Box (Active if options > minItemsForSearch) */}
+            {showSearchInput && (
+              <div className="p-2 border-b border-slate-100 bg-slate-50/70 relative">
+                <Search className="w-3.5 h-3.5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={searchPlaceholder}
+                  className="w-full pl-8 pr-7 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 text-slate-800"
+                />
+                {search && (
+                  <button
+                    type="button"
+                    onClick={() => setSearch("")}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 hover:text-slate-600"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Options List */}
+            <div className="overflow-y-auto divide-y divide-slate-50 p-1 flex-1">
+              {filteredOptions.length === 0 ? (
+                <div className="py-6 text-center text-xs text-slate-400 px-3">
+                  <span>Tidak ada opsi yang cocok</span>
+                  {search && (
+                    <p className="text-[10px] text-slate-400 mt-0.5 truncate font-mono">
+                      &ldquo;{search}&rdquo;
+                    </p>
+                  )}
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = opt.value === value;
+
+                  return (
+                    <div
+                      key={opt.value}
+                      onClick={() => handleSelect(opt.value, opt.disabled)}
+                      className={`flex items-center justify-between p-2 text-xs rounded-lg cursor-pointer select-none transition-colors ${
+                        opt.disabled
+                          ? "opacity-50 cursor-not-allowed bg-slate-50 text-slate-400"
+                          : isSelected
+                          ? "bg-sky-50/90 text-sky-950 font-bold"
+                          : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0 pr-2">
+                        {opt.icon && <span className="shrink-0">{opt.icon}</span>}
+                        <div className="truncate">
+                          <div className="flex items-center gap-1.5 truncate">
+                            <span className="truncate">{opt.label}</span>
+                            {opt.badge && <span className="shrink-0">{opt.badge}</span>}
+                          </div>
+                          {opt.sublabel && (
+                            <p className="text-[10px] text-slate-400 truncate mt-0.5 font-normal">
+                              {opt.sublabel}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {isSelected && (
+                        <Check className="w-3.5 h-3.5 text-sky-600 stroke-[3] shrink-0 ml-1.5" />
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Options count footer for large lists */}
+            {options.length > 8 && (
+              <div className="px-2.5 py-1 bg-slate-50/80 border-t border-slate-100 text-[10px] text-slate-400 text-right font-medium">
+                Menampilkan {filteredOptions.length} dari {options.length} opsi
+              </div>
+            )}
+          </div>,
+          document.body
+        )}
+    </>
   );
 }
