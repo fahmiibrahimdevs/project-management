@@ -144,7 +144,7 @@ export function ProjectTeamTab({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Section Header */}
       <div className="space-y-1">
         <div className="flex items-center gap-2">

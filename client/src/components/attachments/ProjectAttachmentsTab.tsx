@@ -423,7 +423,7 @@ export function ProjectAttachmentsTab({
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* Section Header */}
       <div className="space-y-1">
         <div className="flex items-center gap-2">
